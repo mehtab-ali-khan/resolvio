@@ -20,3 +20,11 @@ def create_ticket_with_message(*, customer_name, customer_email, message):
         )
 
     return ticket
+
+
+def add_agent_reply(*, ticket, message):
+    return Message.objects.create(
+        ticket=ticket,
+        sender_type=Message.SenderType.AGENT,
+        body=message.strip(),
+    )
