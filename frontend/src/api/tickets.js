@@ -43,6 +43,27 @@ export async function createAgentReply(ticketId, payload) {
 }
 
 
+export async function createCustomerMessage(ticketId, payload) {
+  const response = await fetch(
+    `${API_BASE_URL}/api/tickets/${ticketId}/customer-messages/`,
+    {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(payload),
+    }
+  );
+  const data = await response.json();
+
+  if (!response.ok) {
+    throw new Error(data.detail || "Message could not be sent.");
+  }
+
+  return data;
+}
+
+
 export async function createTicket(payload) {
   const response = await fetch(`${API_BASE_URL}/api/tickets/`, {
     method: "POST",

@@ -15,9 +15,8 @@ Build a simple support flow for a small business:
 ## Project Structure
 
 ```txt
-backend/   Django API, database models, and later WebSockets
-frontend/  React support software dashboard and widget source
-demo/      Simple business website that loads the widget
+backend/   Django API, database models, and ticket/message logic
+frontend/  React agent dashboard and embeddable widget build
 ```
 
 ## Current Features
@@ -27,6 +26,7 @@ demo/      Simple business website that loads the widget
 - Agent dashboard can list incoming tickets.
 - Agent can open a ticket and view the conversation.
 - Agent can send a reply into the ticket conversation.
+- Widget state persists in localStorage so the conversation continues after reload.
 
 - `backend/core`: Django project settings.
 - `backend/app`: Django app for tickets and messages.
@@ -72,3 +72,9 @@ POST /api/tickets/<id>/messages/  Add agent reply
 cd backend
 pytest
 ```
+
+## Deployment Plan
+
+- `frontend/` will deploy to Vercel and serve the dashboard plus `widget.js`.
+- `backend/` will deploy to EC2 and expose the Django API publicly.
+- Customer websites will load the widget with a public script URL.

@@ -6,12 +6,12 @@ from rest_framework.response import Response
 
 from .models import Ticket
 from .serializers import (
-    AgentReplySerializer,
     TicketCreateSerializer,
     TicketDetailSerializer,
     TicketListSerializer,
+    TicketMessageSerializer,
 )
-from .services import add_agent_reply, create_ticket_with_message
+from .services import add_agent_reply, add_customer_message, create_ticket_with_message
 
 
 class TicketListCreateView(ListCreateAPIView):
@@ -44,7 +44,7 @@ class TicketDetailView(RetrieveAPIView):
 
 
 class AgentReplyCreateView(CreateAPIView):
-    serializer_class = AgentReplySerializer
+    serializer_class = TicketMessageSerializer
 
     def create(self, request, *args, **kwargs):
         ticket = get_object_or_404(Ticket, pk=self.kwargs["pk"])
@@ -52,6 +52,30 @@ class AgentReplyCreateView(CreateAPIView):
         serializer.is_valid(raise_exception=True)
 
         message = add_agent_reply(
+            ticket=ticket,
+            message=serializer.validated_data["message"],
+        )
+
+        return Response(
+            {
+                "id": message.id,
+                "sender_type": message.sender_type,
+                "body": message.body,
+                "created_at": message.created_at,
+            },
+            status=status.HTTP_201_CREATED,
+        )
+
+
+class CustomerMessageCreateView(CreateAPIView):
+    serializer_class = TicketMessageSerializer
+
+    def create(self, request, *args, **kwargs):
+        ticket = get_object_or_404(Ticket, pk=self.kwargs["pk"])
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+
+        message = add_customer_message(
             ticket=ticket,
             message=serializer.validated_data["message"],
         )

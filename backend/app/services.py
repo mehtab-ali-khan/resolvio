@@ -28,3 +28,11 @@ def add_agent_reply(*, ticket, message):
         sender_type=Message.SenderType.AGENT,
         body=message.strip(),
     )
+
+
+def add_customer_message(*, ticket, message):
+    return Message.objects.create(
+        ticket=ticket,
+        sender_type=Message.SenderType.CUSTOMER,
+        body=message.strip(),
+    )

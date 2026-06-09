@@ -46,25 +46,39 @@ export function AgentDashboard() {
     loadTickets();
   }, []);
 
+  const openTicketCount = tickets.filter((ticket) => ticket.status === "open").length;
+
   return (
-    <section className="mt-12 max-w-4xl rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
-      <div className="mb-4 flex items-center justify-between gap-4">
+    <section className="mx-auto grid min-h-screen max-w-7xl gap-6 px-5 py-8 sm:px-8">
+      <header className="flex flex-wrap items-start justify-between gap-4">
         <div>
-          <p className="text-sm font-bold uppercase text-blue-600">
-            Agent Dashboard
+          <p className="mb-2 text-sm font-bold uppercase text-blue-600">
+            Support Desk
           </p>
-          <h2 className="text-2xl font-bold">Incoming Tickets</h2>
+          <h1 className="text-3xl font-bold tracking-tight">Agent Dashboard</h1>
+          <p className="mt-2 max-w-2xl text-slate-600">
+            Review incoming customer complaints and reply from one focused
+            workspace.
+          </p>
         </div>
 
         <button
-          className="rounded-md border border-slate-300 px-3 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50"
+          className="rounded-md border border-slate-300 bg-white px-3 py-2 text-sm font-semibold text-slate-700 shadow-sm hover:bg-slate-50"
           type="button"
           onClick={loadTickets}
           disabled={isLoading}
         >
           Refresh
         </button>
+      </header>
+
+      <div className="grid gap-3 sm:grid-cols-3">
+        <SummaryItem label="Total tickets" value={tickets.length} />
+        <SummaryItem label="Open tickets" value={openTicketCount} />
+        <SummaryItem label="Selected ticket" value={selectedTicket ? `#${selectedTicket.id}` : "-"} />
       </div>
+
+      <div className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
 
       {isLoading && <p className="text-slate-600">Loading tickets...</p>}
 
@@ -79,11 +93,15 @@ export function AgentDashboard() {
       )}
 
       {!isLoading && !error && tickets.length > 0 && (
-        <div className="grid gap-3 lg:grid-cols-[minmax(0,1fr)_minmax(320px,0.9fr)]">
+        <div className="grid gap-4 lg:grid-cols-[minmax(0,0.85fr)_minmax(380px,1fr)]">
           <div className="grid gap-3">
           {tickets.map((ticket) => (
             <button
-              className="rounded-md border border-slate-200 p-4 text-left hover:border-blue-300 hover:bg-blue-50"
+              className={`rounded-md border p-4 text-left transition ${
+                selectedTicket?.id === ticket.id
+                  ? "border-blue-400 bg-blue-50"
+                  : "border-slate-200 hover:border-blue-300 hover:bg-blue-50"
+              }`}
               key={ticket.id}
               type="button"
               onClick={() => selectTicket(ticket.id)}
@@ -115,7 +133,18 @@ export function AgentDashboard() {
           />
         </div>
       )}
+      </div>
     </section>
+  );
+}
+
+
+function SummaryItem({ label, value }) {
+  return (
+    <div className="rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
+      <p className="text-sm font-semibold text-slate-500">{label}</p>
+      <p className="mt-2 text-2xl font-bold text-slate-900">{value}</p>
+    </div>
   );
 }
 

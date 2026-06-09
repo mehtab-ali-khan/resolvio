@@ -37,3 +37,8 @@ POST /api/tickets/
 GET  /api/tickets/<id>/
 POST /api/tickets/<id>/messages/
 ```
+
+## Deployment Note
+
+This app will be deployed separately from the frontend, likely on EC2, so the
+widget and dashboard can talk to a public API instead of `localhost`.

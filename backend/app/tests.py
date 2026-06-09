@@ -120,3 +120,26 @@ def test_agent_can_reply_to_ticket(client):
     assert message.ticket == ticket
     assert message.sender_type == Message.SenderType.AGENT
     assert message.body == "We are checking this for you."
+
+
+@pytest.mark.django_db
+def test_customer_can_add_message_to_existing_ticket(client):
+    ticket = Ticket.objects.create(
+        customer_name="Ali Khan",
+        customer_email="ali@example.com",
+    )
+
+    response = client.post(
+        reverse("customer-message-create", kwargs={"pk": ticket.id}),
+        data=json.dumps({"message": "My order number is 12345."}),
+        content_type="application/json",
+    )
+
+    assert response.status_code == 201
+    assert Message.objects.count() == 1
+
+    message = Message.objects.get()
+
+    assert message.ticket == ticket
+    assert message.sender_type == Message.SenderType.CUSTOMER
+    assert message.body == "My order number is 12345."

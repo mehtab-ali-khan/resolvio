@@ -1,6 +1,11 @@
 from django.urls import path
 
-from .views import AgentReplyCreateView, TicketDetailView, TicketListCreateView
+from .views import (
+    AgentReplyCreateView,
+    CustomerMessageCreateView,
+    TicketDetailView,
+    TicketListCreateView,
+)
 
 
 urlpatterns = [
@@ -10,5 +15,10 @@ urlpatterns = [
         "tickets/<int:pk>/messages/",
         AgentReplyCreateView.as_view(),
         name="agent-reply-create",
+    ),
+    path(
+        "tickets/<int:pk>/customer-messages/",
+        CustomerMessageCreateView.as_view(),
+        name="customer-message-create",
     ),
 ]

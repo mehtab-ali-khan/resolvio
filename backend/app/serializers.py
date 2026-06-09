@@ -9,7 +9,7 @@ class TicketCreateSerializer(serializers.Serializer):
     message = serializers.CharField()
 
 
-class AgentReplySerializer(serializers.Serializer):
+class TicketMessageSerializer(serializers.Serializer):
     message = serializers.CharField()
 
 
