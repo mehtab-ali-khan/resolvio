@@ -27,6 +27,7 @@ frontend/  React agent dashboard and embeddable widget build
 - Agent can open a ticket and view the conversation.
 - Agent can send a reply into the ticket conversation.
 - Widget state persists in localStorage so the conversation continues after reload.
+- The frontend app is the main development surface for both the dashboard and widget.
 
 - `backend/core`: Django project settings.
 - `backend/app`: Django app for tickets and messages.

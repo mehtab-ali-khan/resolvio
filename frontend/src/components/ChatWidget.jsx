@@ -25,7 +25,7 @@ export function ChatWidget() {
   const [error, setError] = useState("");
   const [isLoadingTicket, setIsLoadingTicket] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [isMinimized, setIsMinimized] = useState(true);
+  const [isMinimized, setIsMinimized] = useState(false);
 
   async function loadTicket(savedTicketId) {
     setError("");
@@ -114,7 +114,7 @@ export function ChatWidget() {
   if (!isOpen) {
     return (
       <button
-        className="fixed bottom-6 right-6 flex h-16 w-16 items-center justify-center rounded-full bg-blue-600 text-sm font-bold text-white shadow-2xl hover:bg-blue-700"
+        className="fixed bottom-6 right-6 flex h-16 w-16 items-center justify-center rounded-full bg-gradient-to-br from-blue-600 to-indigo-600 text-sm font-bold text-white shadow-[0_18px_50px_rgba(37,99,235,0.35)] transition hover:scale-105 hover:from-blue-700 hover:to-indigo-700"
         type="button"
         onClick={() => {
           setIsOpen(true);
@@ -127,12 +127,17 @@ export function ChatWidget() {
   }
 
   return (
-    <aside className="fixed bottom-6 right-6 w-[min(360px,calc(100vw-32px))] overflow-hidden rounded-lg border border-slate-200 bg-white shadow-2xl">
-      <div className="flex items-center justify-between bg-slate-900 px-4 py-3.5 text-white">
-        <strong>Support</strong>
+    <aside className="fixed bottom-6 right-6 w-[min(390px,calc(100vw-32px))] overflow-hidden rounded-3xl border border-slate-200/80 bg-white shadow-[0_24px_70px_rgba(15,23,42,0.22)]">
+      <div className="flex items-center justify-between bg-slate-950 px-4 py-3.5 text-white">
+        <div>
+          <strong className="block text-sm font-semibold tracking-wide">
+            Support
+          </strong>
+          <span className="text-xs text-slate-300">We usually reply quickly</span>
+        </div>
         <div className="flex items-center gap-2">
           <button
-            className="text-lg leading-none text-slate-300 hover:text-white"
+            className="flex h-8 w-8 items-center justify-center rounded-full text-lg leading-none text-slate-300 transition hover:bg-white/10 hover:text-white"
             type="button"
             onClick={() => setIsMinimized((value) => !value)}
             aria-label="Minimize chat"
@@ -140,7 +145,7 @@ export function ChatWidget() {
             _
           </button>
           <button
-            className="text-lg leading-none text-slate-300 hover:text-white"
+            className="flex h-8 w-8 items-center justify-center rounded-full text-lg leading-none text-slate-300 transition hover:bg-white/10 hover:text-white"
             type="button"
             onClick={() => setIsOpen(false)}
             aria-label="Close chat"
@@ -152,7 +157,7 @@ export function ChatWidget() {
 
       {isMinimized && (
         <div className="border-t border-slate-200 px-4 py-4">
-          <p className="text-sm text-slate-600">
+          <p className="text-sm leading-6 text-slate-600">
             Need help? Open the chat to continue your conversation.
           </p>
         </div>
@@ -167,7 +172,7 @@ export function ChatWidget() {
           <label className="grid gap-1.5 text-sm font-semibold text-slate-700">
             Name
             <input
-              className="w-full rounded-md border border-slate-300 px-3 py-2 text-slate-900 outline-none focus:border-blue-600"
+              className="w-full rounded-xl border border-slate-300 px-3 py-2 text-slate-900 outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
               name="customer_name"
               value={form.customer_name}
               onChange={updateField}
@@ -179,7 +184,7 @@ export function ChatWidget() {
           <label className="grid gap-1.5 text-sm font-semibold text-slate-700">
             Email
             <input
-              className="w-full rounded-md border border-slate-300 px-3 py-2 text-slate-900 outline-none focus:border-blue-600"
+              className="w-full rounded-xl border border-slate-300 px-3 py-2 text-slate-900 outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
               name="customer_email"
               type="email"
               value={form.customer_email}
@@ -192,7 +197,7 @@ export function ChatWidget() {
           <label className="grid gap-1.5 text-sm font-semibold text-slate-700">
             Complaint
             <textarea
-              className="min-h-24 w-full resize-y rounded-md border border-slate-300 px-3 py-2 text-slate-900 outline-none focus:border-blue-600"
+              className="min-h-24 w-full resize-y rounded-xl border border-slate-300 px-3 py-2 text-slate-900 outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
               name="message"
               value={form.message}
               onChange={updateField}
@@ -202,13 +207,13 @@ export function ChatWidget() {
           </label>
 
           {error && (
-            <p className="rounded-md bg-rose-50 px-3 py-2 text-sm text-rose-700">
+            <p className="rounded-xl border border-rose-200 bg-rose-50 px-3 py-2 text-sm text-rose-700">
               {error}
             </p>
           )}
 
           <button
-            className="rounded-md bg-blue-600 px-3.5 py-2.5 font-bold text-white disabled:cursor-wait disabled:opacity-70"
+            className="rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 px-3.5 py-2.5 font-semibold text-white transition hover:-translate-y-0.5 hover:from-blue-700 hover:to-indigo-700 disabled:cursor-wait disabled:opacity-70"
             type="submit"
             disabled={isSubmitting}
           >
@@ -219,10 +224,10 @@ export function ChatWidget() {
 
       {!isLoadingTicket && ticketId && !isMinimized && (
         <div className="grid gap-3 p-4">
-          <div className="flex items-center justify-between gap-3 rounded-md bg-emerald-50 px-3 py-2 text-sm text-emerald-700">
-            <span>Ticket #{ticketId} conversation</span>
+          <div className="flex items-center justify-between gap-3 rounded-2xl border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm text-emerald-700">
+            <span className="font-medium">Ticket #{ticketId} conversation</span>
             <button
-              className="font-bold text-emerald-800"
+              className="font-semibold text-emerald-800"
               type="button"
               onClick={startNewComplaint}
             >
@@ -231,7 +236,7 @@ export function ChatWidget() {
           </div>
 
           <button
-            className="rounded-md border border-slate-300 px-3 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50"
+            className="rounded-xl border border-slate-300 px-3 py-2 text-sm font-semibold text-slate-700 transition hover:bg-slate-50"
             type="button"
             onClick={() => loadTicket(ticketId)}
           >
@@ -241,10 +246,14 @@ export function ChatWidget() {
           <div className="grid max-h-52 gap-2 overflow-y-auto">
             {messages.map((message, index) => (
               <article
-                className="rounded-md bg-slate-50 p-3 text-sm text-slate-800"
+                className={`rounded-2xl p-3 text-sm text-slate-800 ${
+                  message.sender_type === "agent"
+                    ? "ml-4 border border-blue-100 bg-blue-50"
+                    : "mr-4 border border-slate-200 bg-white"
+                }`}
                 key={`${message.sender_type}-${index}`}
               >
-                <p className="mb-1 text-xs font-bold uppercase text-blue-700">
+                <p className="mb-1 text-xs font-bold uppercase tracking-wide text-blue-700">
                   {message.sender_type}
                 </p>
                 <p>{message.body}</p>
@@ -256,7 +265,7 @@ export function ChatWidget() {
             <label className="grid gap-1.5 text-sm font-semibold text-slate-700">
               Add message
               <textarea
-                className="min-h-20 w-full resize-y rounded-md border border-slate-300 px-3 py-2 text-slate-900 outline-none focus:border-blue-600"
+                className="min-h-20 w-full resize-y rounded-xl border border-slate-300 px-3 py-2 text-slate-900 outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
                 value={newMessage}
                 onChange={(event) => setNewMessage(event.target.value)}
                 placeholder="Add more details..."
@@ -265,13 +274,13 @@ export function ChatWidget() {
             </label>
 
             {error && (
-              <p className="rounded-md bg-rose-50 px-3 py-2 text-sm text-rose-700">
+              <p className="rounded-xl border border-rose-200 bg-rose-50 px-3 py-2 text-sm text-rose-700">
                 {error}
               </p>
             )}
 
             <button
-              className="rounded-md bg-blue-600 px-3.5 py-2.5 font-bold text-white disabled:cursor-wait disabled:opacity-70"
+              className="rounded-xl bg-slate-950 px-3.5 py-2.5 font-semibold text-white transition hover:-translate-y-0.5 hover:bg-slate-800 disabled:cursor-wait disabled:opacity-70"
               type="submit"
               disabled={isSubmitting}
             >

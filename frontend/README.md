@@ -11,6 +11,7 @@ React app for the agent dashboard and chat widget source.
 - Agent reply form.
 - Standalone `widget.js` bundle for embedding on any website.
 - Widget launcher opens and closes from the bottom-right corner.
+- The dashboard and widget are both used from the same frontend app during development.
 
 ## Local Development
 
@@ -50,7 +51,7 @@ served from the same deployment as a public script file.
 ## Main Files
 
 ```txt
-src/App.jsx                         Demo page shell
+src/App.jsx                         Frontend app shell
 src/components/ChatWidget.jsx       Customer complaint widget
 src/components/AgentDashboard.jsx   Agent ticket list and conversation view
 src/api/tickets.js                  Ticket API functions
