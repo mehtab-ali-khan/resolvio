@@ -1,32 +1,29 @@
 import { createRoot } from "react-dom/client";
-
 import { ChatWidget } from "../components/ChatWidget.jsx";
 
-
-function WidgetMount() {
-  return <ChatWidget />;
+function injectStyles() {
+  const link = document.createElement("link");
+  link.rel = "stylesheet";
+  link.href = "https://nexus-support-ai.vercel.app/widget.css";
+  document.head.appendChild(link);
 }
-
 
 function ensureMountPoint() {
   const existingMount = document.getElementById("nexus-support-widget-root");
-
   if (existingMount) {
     return existingMount;
   }
-
   const mount = document.createElement("div");
   mount.id = "nexus-support-widget-root";
   document.body.appendChild(mount);
   return mount;
 }
 
-
 function init() {
+  injectStyles();
   const mount = ensureMountPoint();
-  createRoot(mount).render(<WidgetMount />);
+  createRoot(mount).render(<ChatWidget />);
 }
-
 
 window.NexusSupport = {
   init,
