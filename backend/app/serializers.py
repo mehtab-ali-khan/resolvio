@@ -13,6 +13,14 @@ class TicketMessageSerializer(serializers.Serializer):
     message = serializers.CharField()
 
 
+class TicketStatusUpdateSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Ticket
+        fields = [
+            "status",
+        ]
+
+
 class TicketListSerializer(serializers.ModelSerializer):
     class Meta:
         model = Ticket

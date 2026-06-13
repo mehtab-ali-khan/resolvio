@@ -25,6 +25,24 @@ export async function getTicket(ticketId) {
 }
 
 
+export async function updateTicketStatus(ticketId, status) {
+  const response = await fetch(`${API_BASE_URL}/api/tickets/${ticketId}/`, {
+    method: "PATCH",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({ status }),
+  });
+  const data = await response.json();
+
+  if (!response.ok) {
+    throw new Error(data.detail || data.status?.[0] || "Ticket status could not be updated.");
+  }
+
+  return data;
+}
+
+
 export async function createAgentReply(ticketId, payload) {
   const response = await fetch(`${API_BASE_URL}/api/tickets/${ticketId}/messages/`, {
     method: "POST",

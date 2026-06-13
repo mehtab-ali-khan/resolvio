@@ -123,6 +123,45 @@ def test_agent_can_reply_to_ticket(client):
 
 
 @pytest.mark.django_db
+def test_agent_can_update_ticket_status(client):
+    ticket = Ticket.objects.create(
+        customer_name="Ali Khan",
+        customer_email="ali@example.com",
+    )
+
+    response = client.patch(
+        reverse("ticket-detail", kwargs={"pk": ticket.id}),
+        data=json.dumps({"status": Ticket.Status.IN_PROGRESS}),
+        content_type="application/json",
+    )
+
+    assert response.status_code == 200
+    assert response.json()["status"] == Ticket.Status.IN_PROGRESS
+
+    ticket.refresh_from_db()
+    assert ticket.status == Ticket.Status.IN_PROGRESS
+
+
+@pytest.mark.django_db
+def test_agent_cannot_update_ticket_to_invalid_status(client):
+    ticket = Ticket.objects.create(
+        customer_name="Ali Khan",
+        customer_email="ali@example.com",
+    )
+
+    response = client.patch(
+        reverse("ticket-detail", kwargs={"pk": ticket.id}),
+        data=json.dumps({"status": "closed"}),
+        content_type="application/json",
+    )
+
+    assert response.status_code == 400
+
+    ticket.refresh_from_db()
+    assert ticket.status == Ticket.Status.OPEN
+
+
+@pytest.mark.django_db
 def test_customer_can_add_message_to_existing_ticket(client):
     ticket = Ticket.objects.create(
         customer_name="Ali Khan",

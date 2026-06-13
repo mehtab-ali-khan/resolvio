@@ -1,7 +1,7 @@
 from django.shortcuts import get_object_or_404
 
 from rest_framework import status
-from rest_framework.generics import CreateAPIView, ListCreateAPIView, RetrieveAPIView
+from rest_framework.generics import CreateAPIView, ListCreateAPIView, RetrieveUpdateAPIView
 from rest_framework.response import Response
 
 from .models import Ticket
@@ -10,6 +10,7 @@ from .serializers import (
     TicketDetailSerializer,
     TicketListSerializer,
     TicketMessageSerializer,
+    TicketStatusUpdateSerializer,
 )
 from .services import add_agent_reply, add_customer_message, create_ticket_with_message
 
@@ -38,9 +39,14 @@ class TicketListCreateView(ListCreateAPIView):
         )
 
 
-class TicketDetailView(RetrieveAPIView):
+class TicketDetailView(RetrieveUpdateAPIView):
     queryset = Ticket.objects.prefetch_related("messages")
-    serializer_class = TicketDetailSerializer
+
+    def get_serializer_class(self):
+        if self.request.method in ["PUT", "PATCH"]:
+            return TicketStatusUpdateSerializer
+
+        return TicketDetailSerializer
 
 
 class AgentReplyCreateView(CreateAPIView):
