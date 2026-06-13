@@ -87,6 +87,9 @@ DATABASES = {
 # =================================
 CORS_ALLOWED_ORIGINS = os.environ.get("CORS_ALLOWED_ORIGINS", "").split(",")
 
+# CSRF
+CSRF_TRUSTED_ORIGINS = os.environ.get("CSRF_TRUSTED_ORIGINS", "").split(",")
+
 # =================================
 # INTERNATIONALIZATION
 # =================================
