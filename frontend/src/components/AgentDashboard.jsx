@@ -161,7 +161,7 @@ export function AgentDashboard() {
           <div>
             <p className="text-[11px] font-bold uppercase tracking-widest text-blue-600 mb-1">Support Desk</p>
             <h1 className="text-2xl font-bold text-slate-900 tracking-tight">Agent Dashboard</h1>
-            <p className="text-sm text-slate-500 mt-0.5">Review complaints and reply from one place.</p>
+            <p className="text-sm text-slate-500 mt-0.5">Review complaints and reply from only one place.</p>
           </div>
           <button
             onClick={loadTickets}
