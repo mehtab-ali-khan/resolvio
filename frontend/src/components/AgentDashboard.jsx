@@ -276,6 +276,7 @@ function TicketDetail({ ticket, isLoading, onReplyCreated, onStatusUpdated, onCl
   const [error, setError] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isStatusSubmitting, setIsStatusSubmitting] = useState(false);
+  const [isStatusMenuOpen, setIsStatusMenuOpen] = useState(false);
 
   async function submitReply(e) {
     e.preventDefault();
@@ -292,13 +293,17 @@ function TicketDetail({ ticket, isLoading, onReplyCreated, onStatusUpdated, onCl
     }
   }
 
-  async function changeStatus(e) {
-    const nextStatus = e.target.value;
+  async function changeStatus(nextStatus) {
+    if (nextStatus === ticket.status) {
+      setIsStatusMenuOpen(false);
+      return;
+    }
     setError("");
     setIsStatusSubmitting(true);
     try {
       const updatedTicket = await updateTicketStatus(ticket.id, nextStatus);
       onStatusUpdated(ticket.id, updatedTicket.status);
+      setIsStatusMenuOpen(false);
     } catch (err) {
       setError(err.message);
     } finally {
@@ -329,20 +334,66 @@ function TicketDetail({ ticket, isLoading, onReplyCreated, onStatusUpdated, onCl
           </div>
           <p className="text-xs text-[var(--nexus-color-muted)] truncate">{ticket.customer_email} · Ticket #{ticket.id}</p>
         </div>
-        <label className="sr-only" htmlFor={`ticket-status-${ticket.id}`}>Ticket status</label>
-        <select
-          id={`ticket-status-${ticket.id}`}
-          value={ticket.status}
-          onChange={changeStatus}
-          disabled={isStatusSubmitting}
-          className="px-3 py-2 rounded-[var(--nexus-radius-md)] border border-[var(--nexus-color-border)] bg-[var(--nexus-color-surface)] text-xs font-semibold text-[var(--nexus-color-secondary)] outline-none focus:border-[var(--nexus-color-primary)] focus:ring-2 focus:ring-[var(--nexus-color-primary-soft)] disabled:opacity-60 disabled:cursor-wait"
+        <div
+          className="relative flex-shrink-0"
+          onBlur={event => {
+            if (!event.currentTarget.contains(event.relatedTarget)) {
+              setIsStatusMenuOpen(false);
+            }
+          }}
         >
-          {TICKET_STATUSES.map(status => (
-            <option key={status.value} value={status.value}>
-              {status.label}
-            </option>
-          ))}
-        </select>
+          <label className="sr-only" htmlFor={`ticket-status-${ticket.id}`}>Ticket status</label>
+          <button
+            id={`ticket-status-${ticket.id}`}
+            type="button"
+            onClick={() => setIsStatusMenuOpen(open => !open)}
+            disabled={isStatusSubmitting}
+            className="h-9 min-w-32 rounded-[var(--nexus-radius-md)] border border-[var(--nexus-color-border-strong)] bg-[var(--nexus-color-surface)] pl-3.5 pr-9 text-left text-xs font-bold text-[var(--nexus-color-secondary-strong)] shadow-[var(--nexus-shadow-sm)] outline-none transition hover:border-[var(--nexus-color-primary-muted)] focus:border-[var(--nexus-color-primary)] focus:ring-2 focus:ring-[var(--nexus-color-primary-soft)] disabled:opacity-60 disabled:cursor-wait"
+            aria-haspopup="listbox"
+            aria-expanded={isStatusMenuOpen}
+          >
+            {statusLabels[ticket.status] ?? ticket.status}
+          </button>
+          <svg
+            className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-[var(--nexus-color-primary)]"
+            width="14"
+            height="14"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2.5"
+          >
+            <path d="m6 9 6 6 6-6" />
+          </svg>
+          {isStatusMenuOpen && (
+            <div
+              className="absolute right-0 top-11 z-20 w-40 overflow-hidden rounded-[var(--nexus-radius-md)] border border-[var(--nexus-color-border)] bg-[var(--nexus-color-surface)] p-1 shadow-[var(--nexus-shadow-md)]"
+              role="listbox"
+            >
+              {TICKET_STATUSES.map(status => {
+                const selected = ticket.status === status.value;
+                return (
+                  <button
+                    key={status.value}
+                    type="button"
+                    onMouseDown={event => event.preventDefault()}
+                    onClick={() => changeStatus(status.value)}
+                    className={`flex h-9 w-full items-center justify-between rounded-[var(--nexus-radius-sm)] px-3 text-left text-xs font-semibold transition
+                      ${selected
+                        ? "bg-[var(--nexus-color-primary-soft)] text-[var(--nexus-color-primary-strong)]"
+                        : "text-[var(--nexus-color-secondary-strong)] hover:bg-[var(--nexus-color-surface-muted)]"
+                      }`}
+                    role="option"
+                    aria-selected={selected}
+                  >
+                    {status.label}
+                    {selected && <span className="h-1.5 w-1.5 rounded-full bg-[var(--nexus-color-primary)]" />}
+                  </button>
+                );
+              })}
+            </div>
+          )}
+        </div>
         <button
           onClick={onClose}
           className="text-[var(--nexus-color-subtle)] hover:text-[var(--nexus-color-secondary)] text-xl leading-none p-1 rounded-[var(--nexus-radius-sm)] hover:bg-[var(--nexus-color-secondary-soft)] transition"
@@ -353,7 +404,7 @@ function TicketDetail({ ticket, isLoading, onReplyCreated, onStatusUpdated, onCl
       </div>
 
       {/* Messages */}
-      <div className="flex-1 px-5 py-4 overflow-y-auto max-h-[calc(100vh-420px)] flex flex-col gap-3">
+      <div className="flex-1 px-5 py-5 overflow-y-auto max-h-[calc(100vh-410px)] min-h-48 flex flex-col gap-4 bg-[var(--nexus-color-surface)]">
         {ticket.messages?.length === 0 && (
           <EmptyState icon="💬" title="No messages yet" body="The customer has not sent any messages." />
         )}
@@ -365,7 +416,7 @@ function TicketDetail({ ticket, isLoading, onReplyCreated, onStatusUpdated, onCl
               <span className={`text-[10px] font-bold uppercase tracking-wider px-1 ${isAgent ? "text-[var(--nexus-message-agent-label)]" : "text-[var(--nexus-message-customer-label)]"}`}>
                 {isAgent ? "You (agent)" : ticket.customer_name}
               </span>
-              <div className={`max-w-[82%] px-3.5 py-2.5 text-sm leading-relaxed
+              <div className={`max-w-[82%] px-4 py-3 text-sm leading-relaxed shadow-[var(--nexus-shadow-sm)]
                 ${isAgent
                   ? "bg-[var(--nexus-message-agent-bg)] text-[var(--nexus-message-agent-text)] rounded-[var(--nexus-radius-lg)] rounded-tr-sm border border-[var(--nexus-color-primary-soft)]"
                   : "bg-[var(--nexus-message-customer-bg)] text-[var(--nexus-message-customer-text)] rounded-[var(--nexus-radius-lg)] rounded-tl-sm border border-[var(--nexus-message-customer-border)]"
@@ -388,19 +439,19 @@ function TicketDetail({ ticket, isLoading, onReplyCreated, onStatusUpdated, onCl
             {error}
           </div>
         )}
-        <form onSubmit={submitReply} className="flex gap-2 items-end">
+        <form onSubmit={submitReply} className="grid gap-2 sm:grid-cols-[1fr_118px] sm:items-stretch">
           <textarea
             value={reply}
             onChange={e => setReply(e.target.value)}
             placeholder="Write a reply…"
             required
-            rows={3}
-            className="flex-1 px-3.5 py-2.5 rounded-[var(--nexus-radius-md)] border border-[var(--nexus-color-border)] text-sm text-[var(--nexus-color-text)] placeholder-[var(--nexus-color-subtle)] outline-none resize-none leading-relaxed bg-[var(--nexus-color-surface)] focus:border-[var(--nexus-color-primary)] focus:ring-2 focus:ring-[var(--nexus-color-primary-soft)] transition"
+            rows={2}
+            className="h-14 min-h-14 w-full px-3.5 py-2.5 rounded-[var(--nexus-radius-md)] border border-[var(--nexus-color-border-strong)] text-sm text-[var(--nexus-color-text)] placeholder-[var(--nexus-color-subtle)] outline-none resize-none leading-relaxed bg-[var(--nexus-color-surface)] shadow-[var(--nexus-shadow-sm)] focus:border-[var(--nexus-color-primary)] focus:ring-2 focus:ring-[var(--nexus-color-primary-soft)] transition"
           />
           <button
             type="submit"
             disabled={isSubmitting}
-            className="min-w-28 px-4 py-2.5 rounded-[var(--nexus-radius-md)] [background:var(--nexus-gradient-brand)] text-[var(--nexus-color-inverse)] text-sm font-semibold hover:opacity-95 disabled:opacity-60 disabled:cursor-wait transition whitespace-nowrap h-fit shadow-[var(--nexus-shadow-sm)]"
+            className="h-14 min-h-14 w-full px-4 rounded-[var(--nexus-radius-md)] [background:var(--nexus-gradient-brand)] text-[var(--nexus-color-inverse)] text-sm font-bold hover:opacity-95 disabled:opacity-60 disabled:cursor-wait transition whitespace-nowrap shadow-[var(--nexus-shadow-sm)]"
           >
             {isSubmitting ? "Sending…" : "Send reply"}
           </button>
