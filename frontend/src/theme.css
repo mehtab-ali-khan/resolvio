@@ -1,0 +1,61 @@
+:root,
+#nexus-support-widget-root {
+  color-scheme: light;
+
+  --nexus-color-bg: #f6f8fb;
+  --nexus-color-bg-soft: #edf3f8;
+  --nexus-color-surface: #ffffff;
+  --nexus-color-surface-muted: #f7fafc;
+  --nexus-color-border: #dde5ee;
+  --nexus-color-border-strong: #c4d0dc;
+
+  --nexus-color-text: #182230;
+  --nexus-color-muted: #58677a;
+  --nexus-color-subtle: #8a98a8;
+  --nexus-color-inverse: #ffffff;
+
+  --nexus-color-primary: #2f6fed;
+  --nexus-color-primary-strong: #2458c7;
+  --nexus-color-primary-soft: #e8f0ff;
+  --nexus-color-primary-muted: #a7c4fb;
+  --nexus-color-header-text: #ffffff;
+  --nexus-color-header-muted: #dbeafe;
+  --nexus-color-header-pill: rgba(255, 255, 255, 0.16);
+  --nexus-color-header-border: rgba(255, 255, 255, 0.22);
+
+  --nexus-color-secondary: #46607a;
+  --nexus-color-secondary-strong: #25364a;
+  --nexus-color-secondary-soft: #edf2f7;
+
+  --nexus-color-accent: #14a3b8;
+  --nexus-color-accent-strong: #0e7490;
+  --nexus-color-accent-soft: #e5f8fb;
+
+  --nexus-color-warning: #d97706;
+  --nexus-color-warning-soft: #fef3c7;
+  --nexus-color-success: #059669;
+  --nexus-color-success-soft: #d1fae5;
+  --nexus-color-danger: #dc2626;
+  --nexus-color-danger-soft: #fee2e2;
+
+  --nexus-message-agent-bg: #e8f0ff;
+  --nexus-message-agent-text: #1e40af;
+  --nexus-message-agent-label: #2563eb;
+  --nexus-message-customer-bg: #e5f8fb;
+  --nexus-message-customer-text: #164e63;
+  --nexus-message-customer-label: #0e7490;
+  --nexus-message-customer-border: #c6eef5;
+
+  --nexus-radius-sm: 8px;
+  --nexus-radius-md: 10px;
+  --nexus-radius-lg: 14px;
+  --nexus-radius-xl: 18px;
+
+  --nexus-shadow-sm: 0 1px 2px rgba(24, 34, 48, 0.07);
+  --nexus-shadow-md: 0 12px 30px rgba(24, 34, 48, 0.10);
+  --nexus-shadow-lg: 0 22px 64px rgba(24, 34, 48, 0.16);
+
+  --nexus-gradient-brand: linear-gradient(135deg, var(--nexus-color-primary), var(--nexus-color-accent));
+  --nexus-gradient-header: var(--nexus-gradient-brand);
+  --nexus-gradient-avatar: linear-gradient(135deg, #0ea5e9 0%, #2563eb 46%, #7c3aed 100%);
+}

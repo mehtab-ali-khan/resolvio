@@ -21,14 +21,14 @@ const statusLabels = TICKET_STATUSES.reduce((labels, status) => {
 // ─── Status badge ───────────────────────────────────────────────────
 function StatusBadge({ status }) {
   const styles = {
-    open: "bg-blue-50 text-blue-600 ring-1 ring-blue-200",
-    in_progress: "bg-amber-50 text-amber-600 ring-1 ring-amber-200",
-    resolved: "bg-emerald-50 text-emerald-600 ring-1 ring-emerald-200",
+    open: "bg-[var(--nexus-color-accent-soft)] text-[var(--nexus-color-accent-strong)] ring-1 ring-[var(--nexus-color-accent-soft)]",
+    in_progress: "bg-[var(--nexus-color-warning-soft)] text-[var(--nexus-color-warning)] ring-1 ring-[var(--nexus-color-warning-soft)]",
+    resolved: "bg-[var(--nexus-color-success-soft)] text-[var(--nexus-color-success)] ring-1 ring-[var(--nexus-color-success-soft)]",
   };
   const dots = {
-    open: "bg-blue-500",
-    in_progress: "bg-amber-500",
-    resolved: "bg-emerald-500",
+    open: "bg-[var(--nexus-color-accent)]",
+    in_progress: "bg-[var(--nexus-color-warning)]",
+    resolved: "bg-[var(--nexus-color-success)]",
   };
   return (
     <span className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-bold uppercase tracking-wider ${styles[status] ?? styles.open}`}>
@@ -42,12 +42,10 @@ function StatusBadge({ status }) {
 // ─── Avatar ─────────────────────────────────────────────────────────
 function Avatar({ name, size = "md" }) {
   const initials = name?.split(" ").map(w => w[0]).slice(0, 2).join("").toUpperCase() ?? "?";
-  const hue = (name?.charCodeAt(0) ?? 0) * 37 % 360;
   const sizeClass = size === "sm" ? "w-8 h-8 text-xs" : size === "lg" ? "w-11 h-11 text-base" : "w-9 h-9 text-sm";
   return (
     <div
-      className={`${sizeClass} rounded-full flex items-center justify-center font-bold text-white flex-shrink-0 select-none`}
-      style={{ background: `hsl(${hue},55%,50%)` }}
+      className={`${sizeClass} rounded-full flex items-center justify-center font-bold text-[var(--nexus-color-inverse)] flex-shrink-0 select-none [background:var(--nexus-gradient-avatar)] ring-2 ring-[var(--nexus-color-primary-soft)]`}
     >
       {initials}
     </div>
@@ -58,9 +56,9 @@ function Avatar({ name, size = "md" }) {
 // ─── Stat card ──────────────────────────────────────────────────────
 function StatCard({ label, value, accentClass }) {
   return (
-    <div className={`bg-white rounded-2xl border border-slate-200 p-5 border-t-2 ${accentClass}`}>
-      <p className="text-[11px] font-bold uppercase tracking-widest text-slate-400 mb-2">{label}</p>
-      <p className="text-3xl font-bold text-slate-900 leading-none">{value}</p>
+    <div className={`bg-[var(--nexus-color-surface)] rounded-[var(--nexus-radius-lg)] border border-[var(--nexus-color-border)] p-5 border-t-2 shadow-[var(--nexus-shadow-sm)] ${accentClass}`}>
+      <p className="text-[11px] font-bold uppercase tracking-widest text-[var(--nexus-color-subtle)] mb-2">{label}</p>
+      <p className="text-3xl font-bold text-[var(--nexus-color-text)] leading-none">{value}</p>
     </div>
   );
 }
@@ -71,8 +69,8 @@ function EmptyState({ icon, title, body }) {
   return (
     <div className="flex flex-col items-center justify-center py-16 px-6 text-center">
       <span className="text-4xl mb-3">{icon}</span>
-      <p className="font-semibold text-slate-600 text-sm mb-1">{title}</p>
-      <p className="text-slate-400 text-xs leading-relaxed max-w-48">{body}</p>
+      <p className="font-semibold text-[var(--nexus-color-muted)] text-sm mb-1">{title}</p>
+      <p className="text-[var(--nexus-color-subtle)] text-xs leading-relaxed max-w-48">{body}</p>
     </div>
   );
 }
@@ -136,19 +134,19 @@ export function AgentDashboard() {
   );
 
   return (
-    <div className="min-h-screen bg-slate-50">
+    <div className="min-h-screen bg-[var(--nexus-color-bg)]">
 
       {/* ── Navbar ── */}
-      <nav className="bg-slate-950 sticky top-0 z-10 flex items-center justify-between px-6 h-14">
+      <nav className="[background:var(--nexus-gradient-header)] sticky top-0 z-10 flex items-center justify-between px-6 h-14 shadow-[var(--nexus-shadow-sm)] border-b border-[var(--nexus-color-header-border)]">
         <div className="flex items-center gap-2.5">
-          <div className="w-7 h-7 rounded-lg bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center flex-shrink-0">
+          <div className="w-7 h-7 rounded-[var(--nexus-radius-sm)] [background:var(--nexus-gradient-brand)] flex items-center justify-center flex-shrink-0">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none">
-              <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" fill="white" />
+              <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" fill="var(--nexus-color-inverse)" />
             </svg>
           </div>
-          <span className="text-white font-bold text-[15px] tracking-tight">Nexus Support</span>
+          <span className="text-[var(--nexus-color-header-text)] font-bold text-[15px] tracking-tight">Nexus Support</span>
         </div>
-        <span className="text-xs font-bold uppercase tracking-widest text-blue-400 bg-blue-950 px-3 py-1 rounded-full">
+        <span className="text-xs font-bold uppercase tracking-widest text-[var(--nexus-color-inverse)] bg-[var(--nexus-color-header-pill)] px-3 py-1 rounded-full">
           Agent
         </span>
       </nav>
@@ -159,14 +157,14 @@ export function AgentDashboard() {
         {/* ── Page header ── */}
         <div className="flex flex-wrap items-start justify-between gap-4 mb-6">
           <div>
-            <p className="text-[11px] font-bold uppercase tracking-widest text-blue-600 mb-1">Support Desk</p>
-            <h1 className="text-2xl font-bold text-slate-900 tracking-tight">Agent Dashboard</h1>
-            <p className="text-sm text-slate-500 mt-0.5">Review complaints and reply from only one place.</p>
+            <p className="text-[11px] font-bold uppercase tracking-widest text-[var(--nexus-color-primary)] mb-1">Support Desk</p>
+            <h1 className="text-2xl font-bold text-[var(--nexus-color-text)] tracking-tight">Agent Dashboard</h1>
+            <p className="text-sm text-[var(--nexus-color-muted)] mt-0.5">Review complaints and reply from only one place.</p>
           </div>
           <button
             onClick={loadTickets}
             disabled={isLoading}
-            className="flex items-center gap-2 px-4 py-2 rounded-xl border border-slate-200 bg-white text-slate-700 text-sm font-semibold shadow-sm hover:bg-slate-50 transition disabled:opacity-60 disabled:cursor-wait"
+            className="flex items-center gap-2 px-4 py-2 rounded-[var(--nexus-radius-md)] border border-[var(--nexus-color-border)] bg-[var(--nexus-color-surface)] text-[var(--nexus-color-secondary)] text-sm font-semibold shadow-[var(--nexus-shadow-sm)] hover:bg-[var(--nexus-color-surface-muted)] transition disabled:opacity-60 disabled:cursor-wait"
           >
             <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" className={isLoading ? "animate-spin" : ""}>
               <polyline points="23 4 23 10 17 10" />
@@ -178,15 +176,15 @@ export function AgentDashboard() {
 
         {/* ── Stat cards ── */}
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-6">
-          <StatCard label="Total" value={tickets.length} accentClass="border-t-indigo-500" />
-          <StatCard label="Open" value={openCount} accentClass="border-t-blue-500" />
-          <StatCard label="In progress" value={inProgressCount} accentClass="border-t-amber-500" />
-          <StatCard label="Resolved" value={resolvedCount} accentClass="border-t-emerald-500" />
+          <StatCard label="Total" value={tickets.length} accentClass="border-t-[var(--nexus-color-secondary)]" />
+          <StatCard label="Open" value={openCount} accentClass="border-t-[var(--nexus-color-accent)]" />
+          <StatCard label="In progress" value={inProgressCount} accentClass="border-t-[var(--nexus-color-warning)]" />
+          <StatCard label="Resolved" value={resolvedCount} accentClass="border-t-[var(--nexus-color-success)]" />
         </div>
 
         {/* ── Error ── */}
         {error && (
-          <div className="mb-5 px-4 py-3 rounded-xl bg-rose-50 border border-rose-200 text-rose-700 text-sm">
+          <div className="mb-5 px-4 py-3 rounded-[var(--nexus-radius-md)] bg-[var(--nexus-color-danger-soft)] border border-[var(--nexus-color-danger-soft)] text-[var(--nexus-color-danger)] text-sm">
             {error}
           </div>
         )}
@@ -195,28 +193,28 @@ export function AgentDashboard() {
         <div className={`grid gap-4 items-start ${selectedTicket || isDetailLoading ? "lg:grid-cols-[1fr_1.1fr]" : "grid-cols-1"}`}>
 
           {/* ── Ticket list panel ── */}
-          <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+          <div className="bg-[var(--nexus-color-surface)] rounded-[var(--nexus-radius-xl)] border border-[var(--nexus-color-border)] shadow-[var(--nexus-shadow-sm)] overflow-hidden">
 
             {/* Search */}
-            <div className="flex items-center gap-2 px-4 py-3 border-b border-slate-100">
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#94a3b8" strokeWidth="2">
+            <div className="flex items-center gap-2 px-4 py-3 border-b border-[var(--nexus-color-border)] bg-[var(--nexus-color-surface-muted)]">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--nexus-color-subtle)" strokeWidth="2">
                 <circle cx="11" cy="11" r="8" /><line x1="21" y1="21" x2="16.65" y2="16.65" />
               </svg>
               <input
                 value={search}
                 onChange={e => setSearch(e.target.value)}
                 placeholder="Search by name or email…"
-                className="flex-1 text-sm text-slate-900 placeholder-slate-400 bg-transparent outline-none"
+                className="flex-1 text-sm text-[var(--nexus-color-text)] placeholder-[var(--nexus-color-subtle)] bg-transparent outline-none"
               />
               {search && (
-                <button onClick={() => setSearch("")} className="text-slate-400 hover:text-slate-600 text-lg leading-none">×</button>
+                <button onClick={() => setSearch("")} className="text-[var(--nexus-color-subtle)] hover:text-[var(--nexus-color-secondary)] text-lg leading-none">×</button>
               )}
             </div>
 
             {/* List */}
             <div className="overflow-y-auto max-h-[calc(100vh-280px)]">
               {isLoading && (
-                <div className="py-10 text-center text-slate-400 text-sm">Loading tickets…</div>
+                <div className="py-10 text-center text-[var(--nexus-color-subtle)] text-sm">Loading tickets…</div>
               )}
 
               {!isLoading && filtered.length === 0 && (
@@ -235,18 +233,18 @@ export function AgentDashboard() {
                     type="button"
                     onClick={() => selectTicket(ticket.id)}
                     className={`w-full text-left flex items-center gap-3 px-4 py-3.5 transition border-l-2
-                      ${i < filtered.length - 1 ? "border-b border-slate-100" : ""}
-                      ${active ? "bg-blue-50 border-l-blue-500" : "hover:bg-slate-50 border-l-transparent"}
+                      ${i < filtered.length - 1 ? "border-b border-[var(--nexus-color-border)]" : ""}
+                      ${active ? "bg-[var(--nexus-color-primary-soft)] border-l-[var(--nexus-color-primary)]" : "hover:bg-[var(--nexus-color-surface-muted)] border-l-transparent"}
                     `}
                   >
                     <Avatar name={ticket.customer_name} />
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center justify-between gap-2 mb-0.5">
-                        <span className="font-semibold text-sm text-slate-900 truncate">{ticket.customer_name}</span>
+                        <span className="font-semibold text-sm text-[var(--nexus-color-text)] truncate">{ticket.customer_name}</span>
                         <StatusBadge status={ticket.status} />
                       </div>
-                      <p className="text-xs text-slate-500 truncate">{ticket.customer_email}</p>
-                      <p className="text-[11px] text-slate-400 mt-0.5">{new Date(ticket.created_at).toLocaleString()}</p>
+                      <p className="text-xs text-[var(--nexus-color-muted)] truncate">{ticket.customer_email}</p>
+                      <p className="text-[11px] text-[var(--nexus-color-subtle)] mt-0.5">{new Date(ticket.created_at).toLocaleString()}</p>
                     </div>
                   </button>
                 );
@@ -310,7 +308,7 @@ function TicketDetail({ ticket, isLoading, onReplyCreated, onStatusUpdated, onCl
 
   if (isLoading) {
     return (
-      <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+      <div className="bg-[var(--nexus-color-surface)] rounded-[var(--nexus-radius-xl)] border border-[var(--nexus-color-border)] shadow-[var(--nexus-shadow-sm)] overflow-hidden">
         <EmptyState icon="⏳" title="Loading conversation…" body="Please wait." />
       </div>
     );
@@ -319,17 +317,17 @@ function TicketDetail({ ticket, isLoading, onReplyCreated, onStatusUpdated, onCl
   if (!ticket) return null;
 
   return (
-    <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden flex flex-col">
+    <div className="bg-[var(--nexus-color-surface)] rounded-[var(--nexus-radius-xl)] border border-[var(--nexus-color-border)] shadow-[var(--nexus-shadow-sm)] overflow-hidden flex flex-col">
 
       {/* Header */}
-      <div className="flex items-center gap-3 px-5 py-4 border-b border-slate-100">
+      <div className="flex items-center gap-3 px-5 py-4 border-b border-[var(--nexus-color-border)] bg-[var(--nexus-color-surface-muted)]">
         <Avatar name={ticket.customer_name} size="lg" />
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2 mb-0.5">
-            <h2 className="font-bold text-slate-900 text-[15px] truncate">{ticket.customer_name}</h2>
+            <h2 className="font-bold text-[var(--nexus-color-text)] text-[15px] truncate">{ticket.customer_name}</h2>
             <StatusBadge status={ticket.status} />
           </div>
-          <p className="text-xs text-slate-500 truncate">{ticket.customer_email} · Ticket #{ticket.id}</p>
+          <p className="text-xs text-[var(--nexus-color-muted)] truncate">{ticket.customer_email} · Ticket #{ticket.id}</p>
         </div>
         <label className="sr-only" htmlFor={`ticket-status-${ticket.id}`}>Ticket status</label>
         <select
@@ -337,7 +335,7 @@ function TicketDetail({ ticket, isLoading, onReplyCreated, onStatusUpdated, onCl
           value={ticket.status}
           onChange={changeStatus}
           disabled={isStatusSubmitting}
-          className="px-3 py-2 rounded-xl border border-slate-200 bg-slate-50 text-xs font-semibold text-slate-700 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100 disabled:opacity-60 disabled:cursor-wait"
+          className="px-3 py-2 rounded-[var(--nexus-radius-md)] border border-[var(--nexus-color-border)] bg-[var(--nexus-color-surface)] text-xs font-semibold text-[var(--nexus-color-secondary)] outline-none focus:border-[var(--nexus-color-primary)] focus:ring-2 focus:ring-[var(--nexus-color-primary-soft)] disabled:opacity-60 disabled:cursor-wait"
         >
           {TICKET_STATUSES.map(status => (
             <option key={status.value} value={status.value}>
@@ -347,7 +345,7 @@ function TicketDetail({ ticket, isLoading, onReplyCreated, onStatusUpdated, onCl
         </select>
         <button
           onClick={onClose}
-          className="text-slate-400 hover:text-slate-600 text-xl leading-none p-1 rounded-lg hover:bg-slate-100 transition"
+          className="text-[var(--nexus-color-subtle)] hover:text-[var(--nexus-color-secondary)] text-xl leading-none p-1 rounded-[var(--nexus-radius-sm)] hover:bg-[var(--nexus-color-secondary-soft)] transition"
           aria-label="Close"
         >
           ×
@@ -364,18 +362,18 @@ function TicketDetail({ ticket, isLoading, onReplyCreated, onStatusUpdated, onCl
           const isAgent = msg.sender_type === "agent";
           return (
             <div key={msg.id ?? i} className={`flex flex-col gap-1 ${isAgent ? "items-end" : "items-start"}`}>
-              <span className={`text-[10px] font-bold uppercase tracking-wider px-1 ${isAgent ? "text-blue-600" : "text-slate-500"}`}>
+              <span className={`text-[10px] font-bold uppercase tracking-wider px-1 ${isAgent ? "text-[var(--nexus-message-agent-label)]" : "text-[var(--nexus-message-customer-label)]"}`}>
                 {isAgent ? "You (agent)" : ticket.customer_name}
               </span>
               <div className={`max-w-[82%] px-3.5 py-2.5 text-sm leading-relaxed
                 ${isAgent
-                  ? "bg-slate-900 text-slate-100 rounded-2xl rounded-tr-sm"
-                  : "bg-slate-100 text-slate-800 rounded-2xl rounded-tl-sm"
+                  ? "bg-[var(--nexus-message-agent-bg)] text-[var(--nexus-message-agent-text)] rounded-[var(--nexus-radius-lg)] rounded-tr-sm border border-[var(--nexus-color-primary-soft)]"
+                  : "bg-[var(--nexus-message-customer-bg)] text-[var(--nexus-message-customer-text)] rounded-[var(--nexus-radius-lg)] rounded-tl-sm border border-[var(--nexus-message-customer-border)]"
                 }`}
               >
                 {msg.body}
               </div>
-              <span className="text-[10px] text-slate-400 px-1">
+              <span className="text-[10px] text-[var(--nexus-color-subtle)] px-1">
                 {new Date(msg.created_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
               </span>
             </div>
@@ -384,9 +382,9 @@ function TicketDetail({ ticket, isLoading, onReplyCreated, onStatusUpdated, onCl
       </div>
 
       {/* Reply form */}
-      <div className="border-t border-slate-100 px-5 py-4">
+      <div className="border-t border-[var(--nexus-color-border)] px-5 py-4 bg-[var(--nexus-color-surface-muted)]">
         {error && (
-          <div className="mb-3 px-3 py-2 rounded-xl bg-rose-50 border border-rose-200 text-rose-700 text-xs">
+          <div className="mb-3 px-3 py-2 rounded-[var(--nexus-radius-md)] bg-[var(--nexus-color-danger-soft)] border border-[var(--nexus-color-danger-soft)] text-[var(--nexus-color-danger)] text-xs">
             {error}
           </div>
         )}
@@ -397,12 +395,12 @@ function TicketDetail({ ticket, isLoading, onReplyCreated, onStatusUpdated, onCl
             placeholder="Write a reply…"
             required
             rows={3}
-            className="flex-1 px-3.5 py-2.5 rounded-xl border border-slate-200 text-sm text-slate-900 placeholder-slate-400 outline-none resize-none leading-relaxed bg-slate-50 focus:border-blue-500 focus:ring-2 focus:ring-blue-100 transition"
+            className="flex-1 px-3.5 py-2.5 rounded-[var(--nexus-radius-md)] border border-[var(--nexus-color-border)] text-sm text-[var(--nexus-color-text)] placeholder-[var(--nexus-color-subtle)] outline-none resize-none leading-relaxed bg-[var(--nexus-color-surface)] focus:border-[var(--nexus-color-primary)] focus:ring-2 focus:ring-[var(--nexus-color-primary-soft)] transition"
           />
           <button
             type="submit"
             disabled={isSubmitting}
-            className="px-4 py-2.5 rounded-xl bg-gradient-to-br from-blue-600 to-indigo-600 text-white text-sm font-semibold hover:from-blue-700 hover:to-indigo-700 disabled:opacity-60 disabled:cursor-wait transition whitespace-nowrap h-fit"
+            className="min-w-28 px-4 py-2.5 rounded-[var(--nexus-radius-md)] [background:var(--nexus-gradient-brand)] text-[var(--nexus-color-inverse)] text-sm font-semibold hover:opacity-95 disabled:opacity-60 disabled:cursor-wait transition whitespace-nowrap h-fit shadow-[var(--nexus-shadow-sm)]"
           >
             {isSubmitting ? "Sending…" : "Send reply"}
           </button>
