@@ -120,3 +120,10 @@ STATIC_ROOT = BASE_DIR / "staticfiles"
 # DEFAULT PRIMARY KEY
 # =================================
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
+
+from datetime import timedelta
+
+SIMPLE_JWT = {
+    "ACCESS_TOKEN_LIFETIME": timedelta(minutes=300),  # adjust as needed
+    "REFRESH_TOKEN_LIFETIME": timedelta(days=7),
+}

@@ -9,22 +9,22 @@ function injectStyles() {
 }
 
 function ensureMountPoint() {
-  const existingMount = document.getElementById("nexus-support-widget-root");
-  if (existingMount) {
-    return existingMount;
-  }
+  const existing = document.getElementById("nexus-support-widget-root");
+  if (existing) return existing;
   const mount = document.createElement("div");
   mount.id = "nexus-support-widget-root";
   document.body.appendChild(mount);
   return mount;
 }
 
-function init() {
+function init({ apiKey } = {}) {
+  if (!apiKey) {
+    console.error("[NexusSupport] apiKey is required.");
+    return;
+  }
   injectStyles();
   const mount = ensureMountPoint();
-  createRoot(mount).render(<ChatWidget />);
+  createRoot(mount).render(<ChatWidget apiKey={apiKey} />);
 }
 
-window.NexusSupport = {
-  init,
-};
+window.NexusSupport = { init };

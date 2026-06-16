@@ -5,6 +5,7 @@ from .views import (
     CustomerMessageCreateView,
     CustomerTicketDetailView,
     SignupView,
+    MeView,
     TicketDetailView,
     TicketListCreateView,
 )
@@ -13,6 +14,7 @@ urlpatterns = [
     path("auth/signup/", SignupView.as_view(), name="signup"),
     path("auth/login/", TokenObtainPairView.as_view(), name="login"),
     path("auth/refresh/", TokenRefreshView.as_view(), name="token_refresh"),
+    path("auth/me/", MeView.as_view(), name="me"),
     # agent routes (by numeric pk)
     path("tickets/", TicketListCreateView.as_view(), name="ticket-list-create"),
     path("tickets/<int:pk>/", TicketDetailView.as_view(), name="ticket-detail"),

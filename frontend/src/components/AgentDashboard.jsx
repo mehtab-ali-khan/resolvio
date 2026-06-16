@@ -1,10 +1,5 @@
 import { useEffect, useState } from "react";
-import {
-  createAgentReply,
-  getTicket,
-  listTickets,
-  updateTicketStatus,
-} from "../api/tickets.js";
+import { createAgentReply, getTicketById, listTickets, updateTicketStatus } from "../api/tickets.js";
 
 const TICKET_STATUSES = [
   { value: "open", label: "Open" },
@@ -77,7 +72,7 @@ function EmptyState({ icon, title, body }) {
 
 
 // ─── Main dashboard ──────────────────────────────────────────────────
-export function AgentDashboard() {
+export function AgentDashboard({ user, onLogout }) {
   const [tickets, setTickets] = useState([]);
   const [selectedTicket, setSelectedTicket] = useState(null);
   const [error, setError] = useState("");
@@ -102,7 +97,7 @@ export function AgentDashboard() {
     setError("");
     setIsDetailLoading(true);
     try {
-      const detail = await getTicket(id);
+      const detail = await getTicketById(id);
       setSelectedTicket(detail);
     } catch (e) {
       setError(e.message);
@@ -138,17 +133,35 @@ export function AgentDashboard() {
 
       {/* ── Navbar ── */}
       <nav className="[background:var(--nexus-gradient-header)] sticky top-0 z-10 flex items-center justify-between px-6 h-14 shadow-[var(--nexus-shadow-sm)] border-b border-[var(--nexus-color-header-border)]">
+
+        {/* Left — brand */}
         <div className="flex items-center gap-2.5">
           <div className="w-7 h-7 rounded-[var(--nexus-radius-sm)] [background:var(--nexus-gradient-brand)] flex items-center justify-center flex-shrink-0">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none">
-              <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" fill="var(--nexus-color-inverse)" />
+              <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" fill="white" />
             </svg>
           </div>
           <span className="text-[var(--nexus-color-header-text)] font-bold text-[15px] tracking-tight">Nexus Support</span>
         </div>
-        <span className="text-xs font-bold uppercase tracking-widest text-[var(--nexus-color-inverse)] bg-[var(--nexus-color-header-pill)] px-3 py-1 rounded-full">
-          Agent
-        </span>
+
+        {/* Right — user info + sign out */}
+        <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2">
+            <div className="w-7 h-7 rounded-full [background:var(--nexus-gradient-avatar)] flex items-center justify-center text-white text-xs font-bold select-none flex-shrink-0">
+              {user?.first_name?.[0]}{user?.last_name?.[0]}
+            </div>
+            <span className="text-[var(--nexus-color-header-text)] text-sm font-semibold hidden sm:block">
+              {user?.first_name} {user?.last_name}
+            </span>
+          </div>
+          <button
+            onClick={onLogout}
+            className="text-xs font-bold uppercase tracking-widest text-[var(--nexus-color-inverse)] bg-[var(--nexus-color-header-pill)] px-3 py-1 rounded-full hover:bg-white/20 transition"
+          >
+            Sign out
+          </button>
+        </div>
+
       </nav>
 
       {/* ── Body ── */}
