@@ -65,6 +65,12 @@ class Ticket(models.Model):
         IN_PROGRESS = "in_progress", "In Progress"
         RESOLVED = "resolved", "Resolved"
 
+    company = models.ForeignKey(
+        Company,
+        related_name="tickets",
+        on_delete=models.CASCADE,
+    )
+    access_token = models.UUIDField(default=uuid.uuid4, unique=True, editable=False)
     customer_name = models.CharField(max_length=120)
     customer_email = models.EmailField()
     status = models.CharField(

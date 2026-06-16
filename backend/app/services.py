@@ -3,13 +3,14 @@ from django.db import transaction
 from .models import Message, Ticket
 
 
-def create_ticket_with_message(*, customer_name, customer_email, message):
+def create_ticket_with_message(*, api_key, customer_name, customer_email, message):
     customer_name = customer_name.strip()
     customer_email = customer_email.strip()
     message = message.strip()
 
     with transaction.atomic():
         ticket = Ticket.objects.create(
+            company=api_key,  # api_key is actually a Company instance after validation
             customer_name=customer_name,
             customer_email=customer_email,
         )
