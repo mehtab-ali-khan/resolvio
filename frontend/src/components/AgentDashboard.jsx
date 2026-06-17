@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { createAgentReply, getTicketById, listTickets, updateTicketStatus } from "../api/tickets.js";
 
 const TICKET_STATUSES = [
@@ -12,6 +12,15 @@ const statusLabels = TICKET_STATUSES.reduce((labels, status) => {
   return labels;
 }, {});
 
+const LIST_POLL_INTERVAL_MS = 30000;
+
+// Mirrors the backend's sort: is_new first, then newest updated  first.
+function sortTickets(list) {
+  return [...list].sort((a, b) => {
+    if (a.is_new !== b.is_new) return a.is_new ? -1 : 1;
+    return new Date(b.updated_at) - new Date(a.updated_at);
+  });
+}
 
 // ─── Status badge ───────────────────────────────────────────────────
 function StatusBadge({ status }) {
@@ -33,6 +42,14 @@ function StatusBadge({ status }) {
   );
 }
 
+// ─── New ticket badge ────────────────────────────────────────────────
+function NewBadge() {
+  return (
+    <span className="text-[10px] font-bold uppercase px-1.5 py-0.5 rounded-full bg-[var(--nexus-color-danger)] text-white">
+      New
+    </span>
+  );
+}
 
 // ─── Avatar ─────────────────────────────────────────────────────────
 function Avatar({ name, size = "md" }) {
@@ -47,7 +64,6 @@ function Avatar({ name, size = "md" }) {
   );
 }
 
-
 // ─── Stat card ──────────────────────────────────────────────────────
 function StatCard({ label, value, accentClass }) {
   return (
@@ -57,7 +73,6 @@ function StatCard({ label, value, accentClass }) {
     </div>
   );
 }
-
 
 // ─── Empty state ─────────────────────────────────────────────────────
 function EmptyState({ icon, title, body }) {
@@ -70,10 +85,12 @@ function EmptyState({ icon, title, body }) {
   );
 }
 
-
 // ─── Main dashboard ──────────────────────────────────────────────────
 export function AgentDashboard({ user, onLogout }) {
   const [tickets, setTickets] = useState([]);
+  const [page, setPage] = useState(1);
+  const [hasMore, setHasMore] = useState(true);
+  const [isLoadingMore, setIsLoadingMore] = useState(false);
   const [selectedTicket, setSelectedTicket] = useState(null);
   const [error, setError] = useState("");
   const [isLoading, setIsLoading] = useState(true);
@@ -84,13 +101,45 @@ export function AgentDashboard({ user, onLogout }) {
     setError("");
     setIsLoading(true);
     try {
-      const loaded = await listTickets();
-      setTickets(loaded);
+      const data = await listTickets(1);
+      setTickets(data.results);
+      setHasMore(Boolean(data.next));
+      setPage(1);
     } catch (e) {
       setError(e.message);
     } finally {
       setIsLoading(false);
     }
+  }
+
+  async function loadMoreTickets() {
+    if (isLoadingMore || !hasMore) return;
+    setIsLoadingMore(true);
+    try {
+      const nextPage = page + 1;
+      const data = await listTickets(nextPage);
+      setTickets(prev => [...prev, ...data.results]);
+      setHasMore(Boolean(data.next));
+      setPage(nextPage);
+    } catch (e) {
+      setError(e.message);
+    } finally {
+      setIsLoadingMore(false);
+    }
+  }
+
+  function handleListScroll(e) {
+    const el = e.target;
+    const nearBottom = el.scrollHeight - el.scrollTop - el.clientHeight < 80;
+    if (nearBottom) loadMoreTickets();
+  }
+
+  function handleMessageSent(ticketId, message) {
+    setSelectedTicket(current =>
+      current?.id === ticketId
+        ? { ...current, messages: [...current.messages, message] }
+        : current
+    );
   }
 
   async function selectTicket(id) {
@@ -99,6 +148,8 @@ export function AgentDashboard({ user, onLogout }) {
     try {
       const detail = await getTicketById(id);
       setSelectedTicket(detail);
+      // Backend clears is_new on fetch — reflect that locally too, without waiting for the next poll.
+      setTickets(prev => sortTickets(prev.map(t => (t.id === id ? { ...t, is_new: false } : t))));
     } catch (e) {
       setError(e.message);
     } finally {
@@ -117,7 +168,30 @@ export function AgentDashboard({ user, onLogout }) {
     );
   }
 
+  // Initial load
   useEffect(() => { loadTickets(); }, []);
+
+  // Single polling loop — refreshes page 1, merges into whatever's loaded,
+  // then re-sorts the whole list so newly-flagged tickets jump to the top
+  // even if they were already loaded past page 1.
+  useEffect(() => {
+    const interval = setInterval(async () => {
+      try {
+        const data = await listTickets(1);
+        setTickets(prevTickets => {
+          const freshById = new Map(data.results.map(t => [t.id, t]));
+          const existingIds = new Set(prevTickets.map(t => t.id));
+          const brandNew = data.results.filter(t => !existingIds.has(t.id));
+          const updatedExisting = prevTickets.map(t => freshById.get(t.id) ?? t);
+          return sortTickets([...brandNew, ...updatedExisting]);
+        });
+      } catch {
+        // silent fail on background poll — don't disrupt the agent
+      }
+    }, LIST_POLL_INTERVAL_MS);
+
+    return () => clearInterval(interval);
+  }, []);
 
   const openCount = tickets.filter(t => t.status === "open").length;
   const inProgressCount = tickets.filter(t => t.status === "in_progress").length;
@@ -225,7 +299,7 @@ export function AgentDashboard({ user, onLogout }) {
             </div>
 
             {/* List */}
-            <div className="overflow-y-auto max-h-[calc(100vh-280px)]">
+            <div className="overflow-y-auto max-h-[calc(100vh-280px)]" onScroll={handleListScroll}>
               {isLoading && (
                 <div className="py-10 text-center text-[var(--nexus-color-subtle)] text-sm">Loading tickets…</div>
               )}
@@ -253,8 +327,13 @@ export function AgentDashboard({ user, onLogout }) {
                     <Avatar name={ticket.customer_name} />
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center justify-between gap-2 mb-0.5">
-                        <span className="font-semibold text-sm text-[var(--nexus-color-text)] truncate">{ticket.customer_name}</span>
-                        <StatusBadge status={ticket.status} />
+                        <span className={`text-sm truncate ${ticket.is_new ? "font-bold" : "font-semibold"} text-[var(--nexus-color-text)]`}>
+                          {ticket.customer_name}
+                        </span>
+                        <div className="flex items-center gap-1.5 flex-shrink-0">
+                          {ticket.is_new && <NewBadge />}
+                          <StatusBadge status={ticket.status} />
+                        </div>
                       </div>
                       <p className="text-xs text-[var(--nexus-color-muted)] truncate">{ticket.customer_email}</p>
                       <p className="text-[11px] text-[var(--nexus-color-subtle)] mt-0.5">{new Date(ticket.created_at).toLocaleString()}</p>
@@ -262,6 +341,9 @@ export function AgentDashboard({ user, onLogout }) {
                   </button>
                 );
               })}
+              {isLoadingMore && (
+                <div className="py-4 text-center text-[var(--nexus-color-subtle)] text-xs">Loading more…</div>
+              )}
             </div>
           </div>
 
@@ -270,7 +352,7 @@ export function AgentDashboard({ user, onLogout }) {
             <TicketDetail
               ticket={selectedTicket}
               isLoading={isDetailLoading}
-              onReplyCreated={selectTicket}
+              onMessageSent={handleMessageSent}
               onStatusUpdated={handleTicketStatusUpdated}
               onClose={() => setSelectedTicket(null)}
             />
@@ -282,23 +364,30 @@ export function AgentDashboard({ user, onLogout }) {
   );
 }
 
-
 // ─── Ticket detail ───────────────────────────────────────────────────
-function TicketDetail({ ticket, isLoading, onReplyCreated, onStatusUpdated, onClose }) {
+function TicketDetail({ ticket, isLoading, onMessageSent, onStatusUpdated, onClose }) {
   const [reply, setReply] = useState("");
   const [error, setError] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isStatusSubmitting, setIsStatusSubmitting] = useState(false);
   const [isStatusMenuOpen, setIsStatusMenuOpen] = useState(false);
+  const messagesContainerRef = useRef(null);
+
+  useEffect(() => {
+    const container = messagesContainerRef.current;
+    if (container) {
+      container.scrollTop = container.scrollHeight;
+    }
+  }, [ticket?.id, ticket?.messages?.length]);
 
   async function submitReply(e) {
     e.preventDefault();
     setError("");
     setIsSubmitting(true);
     try {
-      await createAgentReply(ticket.id, { message: reply });
+      const message = await createAgentReply(ticket.id, { message: reply });
       setReply("");
-      onReplyCreated(ticket.id);
+      onMessageSent(ticket.id, message);
     } catch (err) {
       setError(err.message);
     } finally {
@@ -417,7 +506,10 @@ function TicketDetail({ ticket, isLoading, onReplyCreated, onStatusUpdated, onCl
       </div>
 
       {/* Messages */}
-      <div className="flex-1 px-5 py-5 overflow-y-auto max-h-[calc(100vh-410px)] min-h-48 flex flex-col gap-4 bg-[var(--nexus-color-surface)]">
+      <div
+        ref={messagesContainerRef}
+        className="flex-1 px-5 py-5 overflow-y-auto max-h-[calc(100vh-410px)] min-h-48 flex flex-col gap-4 bg-[var(--nexus-color-surface)]"
+      >
         {ticket.messages?.length === 0 && (
           <EmptyState icon="💬" title="No messages yet" body="The customer has not sent any messages." />
         )}

@@ -514,3 +514,86 @@ def test_customer_message_rate_limited(anon_client, ticket, throttle_rates):
         format="json",
     )
     assert response.status_code == 429
+
+
+@pytest.mark.django_db
+def test_new_ticket_is_marked_is_new(anon_client, company):
+    response = anon_client.post(
+        reverse("ticket-list-create"),
+        data={
+            "api_key": str(company.api_key),
+            "customer_name": "Ali Khan",
+            "customer_email": "ali@example.com",
+            "message": "Help me please.",
+        },
+        format="json",
+    )
+    ticket = Ticket.objects.get(pk=response.json()["ticket_id"])
+    assert ticket.is_new is True
+
+
+@pytest.mark.django_db
+def test_opening_ticket_clears_is_new(auth_client, ticket):
+    assert ticket.is_new is True
+
+    response = auth_client.get(reverse("ticket-detail", kwargs={"pk": ticket.id}))
+    assert response.status_code == 200
+    assert response.json()["is_new"] is False
+
+    ticket.refresh_from_db()
+    assert ticket.is_new is False
+
+
+@pytest.mark.django_db
+def test_new_customer_message_sets_is_new_true_again(auth_client, anon_client, ticket):
+    # agent views it first, clearing the flag
+    auth_client.get(reverse("ticket-detail", kwargs={"pk": ticket.id}))
+    ticket.refresh_from_db()
+    assert ticket.is_new is False
+
+    # customer sends a new message
+    anon_client.post(
+        reverse(
+            "customer-message-create", kwargs={"access_token": ticket.access_token}
+        ),
+        data={"message": "Any update?"},
+        format="json",
+    )
+    ticket.refresh_from_db()
+    assert ticket.is_new is True
+
+
+@pytest.mark.django_db
+def test_ticket_list_sorts_new_tickets_first(auth_client, company):
+    old_ticket = Ticket.objects.create(
+        company=company,
+        customer_name="Old",
+        customer_email="old@test.com",
+        is_new=False,
+    )
+    new_ticket = Ticket.objects.create(
+        company=company, customer_name="New", customer_email="new@test.com", is_new=True
+    )
+
+    response = auth_client.get(reverse("ticket-list-create"))
+    results = response.json()["results"]
+
+    assert results[0]["id"] == new_ticket.id
+    assert results[1]["id"] == old_ticket.id
+
+
+@pytest.mark.django_db
+def test_new_customer_message_updates_ticket_updated_at(ticket):
+    import time
+
+    old_updated_at = ticket.updated_at
+    time.sleep(0.01)
+
+    Message.objects.create(
+        ticket=ticket,
+        sender_type=Message.SenderType.CUSTOMER,
+        body="Following up on this.",
+    )
+
+    ticket.refresh_from_db()
+    assert ticket.updated_at > old_updated_at

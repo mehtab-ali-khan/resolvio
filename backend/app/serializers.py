@@ -75,7 +75,9 @@ class TicketListSerializer(serializers.ModelSerializer):
             "status",
             "priority",
             "category",
+            "is_new",
             "created_at",
+            "updated_at",
         ]
 
 
@@ -106,6 +108,7 @@ class TicketDetailSerializer(serializers.ModelSerializer):
             "status",
             "priority",
             "category",
+            "is_new",
             "created_at",
             "messages",
         ]

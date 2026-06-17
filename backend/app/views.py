@@ -29,7 +29,7 @@ from .services import add_agent_reply, add_customer_message, create_ticket_with_
 
 
 class TicketPagination(PageNumberPagination):
-    page_size = 20
+    page_size = 10
     page_size_query_param = "page_size"
     max_page_size = 100
 
@@ -88,7 +88,7 @@ class TicketListCreateView(ListCreateAPIView):
 
     def get_queryset(self):
         return Ticket.objects.filter(company=self.request.user.company).order_by(
-            "-created_at"
+            "-is_new", "-updated_at"
         )
 
     def get_serializer_class(self):
@@ -127,6 +127,14 @@ class TicketDetailView(RetrieveUpdateAPIView):
             if self.request.method in ["PUT", "PATCH"]
             else TicketDetailSerializer
         )
+
+    def retrieve(self, request, *args, **kwargs):
+        instance = self.get_object()
+        if instance.is_new:
+            instance.is_new = False
+            instance.save(update_fields=["is_new"])
+        serializer = self.get_serializer(instance)
+        return Response(serializer.data)
 
 
 class AgentReplyCreateView(CreateAPIView):

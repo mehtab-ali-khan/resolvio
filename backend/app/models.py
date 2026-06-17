@@ -98,6 +98,7 @@ class Ticket(models.Model):
         choices=Category.choices,
         default=Category.GENERAL,
     )
+    is_new = models.BooleanField(default=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
@@ -121,6 +122,13 @@ class Message(models.Model):
 
     class Meta:
         ordering = ["created_at"]
+
+    def save(self, *args, **kwargs):
+        is_create = self._state.adding
+        super().save(*args, **kwargs)
+        if is_create and self.sender_type == self.SenderType.CUSTOMER:
+            self.ticket.is_new = True
+            self.ticket.save(update_fields=["is_new", "updated_at"])
 
     def __str__(self):
         return f"{self.sender_type} message for ticket #{self.ticket_id}"
