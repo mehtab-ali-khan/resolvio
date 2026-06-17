@@ -137,8 +137,8 @@ export async function logout() {
 
 // ─── Agent API (auth required) ────────────────────────────────────────────────
 
-export async function listTickets() {
-  return apiFetch("/api/tickets/", {}, true);
+export async function listTickets(page = 1) {
+  return apiFetch(`/api/tickets/?page=${page}`, {}, true);
 }
 
 export async function getTicketById(ticketId) {

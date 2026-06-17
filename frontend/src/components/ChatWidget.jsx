@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { createCustomerMessage, createTicket, getTicketByToken } from "../api/tickets.js";
 
 const STORAGE_KEY = "nexus_ticket_token";
+const POLL_INTERVAL_MS = 10000;
 
 const styles = `
   #nexus-support-widget-root {
@@ -124,8 +125,10 @@ export function ChatWidget({ apiKey }) {
   const [messages, setMessages] = useState([]);
   const [newMessage, setNewMessage] = useState("");
   const [error, setError] = useState("");
+  const [unread, setUnread] = useState(0);
   const messagesEndRef = useRef(null);
 
+  // Load existing ticket on mount
   useEffect(() => {
     injectGlobalStyles();
     const saved = localStorage.getItem(STORAGE_KEY);
@@ -143,6 +146,41 @@ export function ChatWidget({ apiKey }) {
     }
   }, [messages, isOpen, isMinimized]);
 
+  // Clear unread badge when widget is opened and visible
+  useEffect(() => {
+    if (isOpen && !isMinimized) setUnread(0);
+  }, [isOpen, isMinimized]);
+
+  // Poll for new messages while a ticket exists — runs regardless of open/closed
+  // so the unread badge stays accurate even when the widget is collapsed.
+  useEffect(() => {
+    if (!accessToken) return;
+
+    function poll() {
+      if (document.hidden) return; // skip while browser tab isn't visible
+      console.log("polling...", accessToken);
+
+      getTicketByToken(accessToken)
+        .then(ticket => {
+          setMessages(prev => {
+            if (ticket.messages.length === prev.length) return prev;
+
+            const newCount = ticket.messages.length - prev.length;
+            if (newCount > 0 && (!isOpen || isMinimized)) {
+              setUnread(u => u + newCount);
+            }
+            return ticket.messages;
+          });
+        })
+        .catch(() => {
+          // silent fail — don't disrupt the user for a background check
+        });
+    }
+
+    const interval = setInterval(poll, POLL_INTERVAL_MS);
+    return () => clearInterval(interval);
+  }, [accessToken, isOpen, isMinimized]);
+
   async function loadTicket(token) {
     setIsLoadingTicket(true);
     setError("");
@@ -151,7 +189,6 @@ export function ChatWidget({ apiKey }) {
       setAccessToken(token);
       setMessages(ticket.messages);
     } catch {
-      // Token invalid or ticket deleted — start fresh
       localStorage.removeItem(STORAGE_KEY);
       setError("Previous conversation could not be loaded.");
     } finally {
@@ -199,6 +236,7 @@ export function ChatWidget({ apiKey }) {
     setNewMessage("");
     setError("");
     setForm(initialForm);
+    setUnread(0);
   }
 
   // ─── Bubble (closed) ─────────────────────────────────────────────────────
@@ -221,6 +259,19 @@ export function ChatWidget({ apiKey }) {
         <svg width="26" height="26" viewBox="0 0 24 24" fill="none">
           <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" fill="white" />
         </svg>
+
+        {unread > 0 && (
+          <span style={{
+            position: "absolute", top: "-4px", right: "-4px",
+            width: "20px", height: "20px", borderRadius: "50%",
+            background: "var(--nexus-color-danger)", color: "white",
+            fontSize: "11px", fontWeight: "700",
+            display: "flex", alignItems: "center", justifyContent: "center",
+            border: "2px solid var(--nexus-color-surface)",
+          }}>
+            {unread}
+          </span>
+        )}
       </button>
     );
   }
@@ -391,21 +442,6 @@ export function ChatWidget({ apiKey }) {
               </div>
             ))}
             <div ref={messagesEndRef} />
-          </div>
-
-          {/* Refresh */}
-          <div style={{ padding: "0 18px 10px" }}>
-            <button
-              type="button" onClick={() => loadTicket(accessToken)}
-              style={{
-                width: "100%", padding: "8px", borderRadius: "10px",
-                border: "1px solid var(--nexus-color-border)",
-                background: "var(--nexus-color-surface-muted)",
-                color: "var(--nexus-color-muted)", fontSize: "12px", fontWeight: "600", cursor: "pointer",
-              }}
-            >
-              ↻ Refresh conversation
-            </button>
           </div>
 
           {/* Reply */}

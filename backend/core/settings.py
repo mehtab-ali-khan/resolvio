@@ -92,6 +92,10 @@ REST_FRAMEWORK = {
     "DEFAULT_AUTHENTICATION_CLASSES": (
         "rest_framework_simplejwt.authentication.JWTAuthentication",
     ),
+    "DEFAULT_THROTTLE_RATES": {
+        "ticket_create": "5/hour",
+        "customer_message": "20/hour",
+    },
 }
 
 # =================================
