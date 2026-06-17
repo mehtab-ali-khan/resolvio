@@ -9,6 +9,8 @@ from rest_framework.views import APIView
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
 from rest_framework_simplejwt.tokens import RefreshToken
+from rest_framework.pagination import PageNumberPagination
+from rest_framework.throttling import AnonRateThrottle
 
 from .models import Ticket
 from .serializers import (
@@ -18,10 +20,27 @@ from .serializers import (
     TicketDetailSerializer,
     TicketListSerializer,
     TicketMessageSerializer,
-    TicketStatusUpdateSerializer,
+    TicketUpdateSerializer,
     UserSerializer,
 )
 from .services import add_agent_reply, add_customer_message, create_ticket_with_message
+
+# ─── Pagination and Throttle classes ────────────────────────────────────────────────────────────────────
+
+
+class TicketPagination(PageNumberPagination):
+    page_size = 20
+    page_size_query_param = "page_size"
+    max_page_size = 100
+
+
+class TicketCreateThrottle(AnonRateThrottle):
+    scope = "ticket_create"
+
+
+class CustomerMessageThrottle(AnonRateThrottle):
+    scope = "customer_message"
+
 
 # ─── Auth ────────────────────────────────────────────────────────────────────
 
@@ -57,6 +76,12 @@ class MeView(APIView):
 
 
 class TicketListCreateView(ListCreateAPIView):
+    pagination_class = TicketPagination
+
+    def get_throttles(self):
+        if self.request.method == "POST":
+            return [TicketCreateThrottle()]
+        return []
 
     def get_permissions(self):
         return [AllowAny()] if self.request.method == "POST" else [IsAuthenticated()]
@@ -98,7 +123,7 @@ class TicketDetailView(RetrieveUpdateAPIView):
 
     def get_serializer_class(self):
         return (
-            TicketStatusUpdateSerializer
+            TicketUpdateSerializer
             if self.request.method in ["PUT", "PATCH"]
             else TicketDetailSerializer
         )
@@ -136,6 +161,7 @@ class CustomerTicketDetailView(generics.RetrieveAPIView):
 class CustomerMessageCreateView(CreateAPIView):
     permission_classes = [AllowAny]
     serializer_class = TicketMessageSerializer
+    throttle_classes = [CustomerMessageThrottle]
 
     def create(self, request, *args, **kwargs):
         ticket = get_object_or_404(Ticket, access_token=self.kwargs["access_token"])

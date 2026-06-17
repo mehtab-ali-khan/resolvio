@@ -65,6 +65,16 @@ class Ticket(models.Model):
         IN_PROGRESS = "in_progress", "In Progress"
         RESOLVED = "resolved", "Resolved"
 
+    class Priority(models.TextChoices):
+        LOW = "low", "Low"
+        MEDIUM = "medium", "Medium"
+        HIGH = "high", "High"
+
+    class Category(models.TextChoices):
+        BILLING = "billing", "Billing"
+        TECHNICAL = "technical", "Technical"
+        GENERAL = "general", "General"
+
     company = models.ForeignKey(
         Company,
         related_name="tickets",
@@ -77,6 +87,16 @@ class Ticket(models.Model):
         max_length=20,
         choices=Status.choices,
         default=Status.OPEN,
+    )
+    priority = models.CharField(
+        max_length=10,
+        choices=Priority.choices,
+        default=Priority.MEDIUM,
+    )
+    category = models.CharField(
+        max_length=20,
+        choices=Category.choices,
+        default=Category.GENERAL,
     )
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)

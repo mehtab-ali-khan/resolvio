@@ -2,11 +2,27 @@ import json
 import pytest
 
 from django.urls import reverse
+from django.core.cache import cache
+from django.test import override_settings
+from rest_framework.settings import api_settings
 from rest_framework.test import APIClient
+from rest_framework.throttling import SimpleRateThrottle
 
 from .models import Company, Message, Ticket, User
 
 # ─── Fixtures ────────────────────────────────────────────────────────────────
+
+
+@pytest.fixture
+def throttle_rates():
+    """Reset DRF throttle class cache and clear the rate-limit cache."""
+    rates = {"ticket_create": "2/hour", "customer_message": "2/hour"}
+    SimpleRateThrottle.THROTTLE_RATES = rates
+    cache.clear()
+    yield rates
+    # Restore after test so other tests aren't affected
+    SimpleRateThrottle.THROTTLE_RATES = api_settings.DEFAULT_THROTTLE_RATES
+    cache.clear()
 
 
 @pytest.fixture
@@ -198,26 +214,25 @@ def test_agent_can_list_own_company_tickets(auth_client, ticket):
 
     assert response.status_code == 200
     data = response.json()
-    assert len(data) == 1
-    assert data[0]["customer_name"] == "Ali Khan"
-    assert data[0]["status"] == Ticket.Status.OPEN
-    assert "id" in data[0]
-    assert "created_at" in data[0]
+    assert data["count"] == 1
+    assert len(data["results"]) == 1
+    assert data["results"][0]["customer_name"] == "Ali Khan"
+    assert data["results"][0]["status"] == Ticket.Status.OPEN
+    assert "id" in data["results"][0]
+    assert "created_at" in data["results"][0]
 
 
 @pytest.mark.django_db
 def test_agent_cannot_see_other_company_tickets(auth_client):
     other_company = Company.objects.create(name="Other Corp")
     Ticket.objects.create(
-        company=other_company,
-        customer_name="Bob",
-        customer_email="bob@other.com",
+        company=other_company, customer_name="Bob", customer_email="bob@other.com"
     )
 
     response = auth_client.get(reverse("ticket-list-create"))
 
     assert response.status_code == 200
-    assert len(response.json()) == 0  # agent sees nothing from other company
+    assert response.json()["count"] == 0
 
 
 @pytest.mark.django_db
@@ -394,3 +409,108 @@ def test_customer_cannot_access_ticket_with_wrong_token(anon_client):
 def test_unauthenticated_cannot_view_ticket_detail(anon_client, ticket):
     response = anon_client.get(reverse("ticket-detail", kwargs={"pk": ticket.id}))
     assert response.status_code == 401
+
+
+@pytest.mark.django_db
+def test_agent_can_update_priority_and_category(auth_client, ticket):
+    response = auth_client.patch(
+        reverse("ticket-detail", kwargs={"pk": ticket.id}),
+        data={"priority": Ticket.Priority.HIGH, "category": Ticket.Category.BILLING},
+        format="json",
+    )
+
+    assert response.status_code == 200
+    data = response.json()
+    assert data["priority"] == Ticket.Priority.HIGH
+    assert data["category"] == Ticket.Category.BILLING
+
+    ticket.refresh_from_db()
+    assert ticket.priority == Ticket.Priority.HIGH
+    assert ticket.category == Ticket.Category.BILLING
+
+
+@pytest.mark.django_db
+def test_ticket_defaults_to_medium_priority_and_general_category(anon_client, company):
+    response = anon_client.post(
+        reverse("ticket-list-create"),
+        data={
+            "api_key": str(company.api_key),
+            "customer_name": "Ali Khan",
+            "customer_email": "ali@example.com",
+            "message": "Help me please.",
+        },
+        format="json",
+    )
+
+    ticket = Ticket.objects.get(pk=response.json()["ticket_id"])
+    assert ticket.priority == Ticket.Priority.MEDIUM
+    assert ticket.category == Ticket.Category.GENERAL
+
+
+@pytest.mark.django_db
+@override_settings(
+    REST_FRAMEWORK={
+        "DEFAULT_AUTHENTICATION_CLASSES": (
+            "rest_framework_simplejwt.authentication.JWTAuthentication",
+        ),
+        "DEFAULT_THROTTLE_RATES": {
+            "ticket_create": "2/hour",
+            "customer_message": "2/hour",
+        },
+    }
+)
+def test_ticket_creation_rate_limited(anon_client, company, throttle_rates):
+
+    payload = {
+        "api_key": str(company.api_key),
+        "customer_name": "Ali Khan",
+        "customer_email": "ali@example.com",
+        "message": "Help me please.",
+    }
+
+    for _ in range(2):
+        response = anon_client.post(
+            reverse("ticket-list-create"), data=payload, format="json"
+        )
+        assert response.status_code == 201
+
+    response = anon_client.post(
+        reverse("ticket-list-create"), data=payload, format="json"
+    )
+    assert response.status_code == 429
+
+
+@pytest.mark.django_db
+@override_settings(
+    REST_FRAMEWORK={
+        "DEFAULT_AUTHENTICATION_CLASSES": (
+            "rest_framework_simplejwt.authentication.JWTAuthentication",
+        ),
+        "DEFAULT_THROTTLE_RATES": {
+            "ticket_create": "2/hour",
+            "customer_message": "2/hour",
+        },
+    }
+)
+def test_customer_message_rate_limited(anon_client, ticket, throttle_rates):
+
+    payload = {"message": "Any update on my order?"}
+
+    for _ in range(2):
+        response = anon_client.post(
+            reverse(
+                "customer-message-create", kwargs={"access_token": ticket.access_token}
+            ),
+            data=payload,
+            format="json",
+        )
+        assert response.status_code == 201
+
+    response = anon_client.post(
+        reverse(
+            "customer-message-create", kwargs={"access_token": ticket.access_token}
+        ),
+        data=payload,
+        format="json",
+    )
+    assert response.status_code == 429

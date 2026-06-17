@@ -68,13 +68,21 @@ class TicketCreateSerializer(serializers.Serializer):
 class TicketListSerializer(serializers.ModelSerializer):
     class Meta:
         model = Ticket
-        fields = ["id", "customer_name", "customer_email", "status", "created_at"]
+        fields = [
+            "id",
+            "customer_name",
+            "customer_email",
+            "status",
+            "priority",
+            "category",
+            "created_at",
+        ]
 
 
-class TicketStatusUpdateSerializer(serializers.ModelSerializer):
+class TicketUpdateSerializer(serializers.ModelSerializer):
     class Meta:
         model = Ticket
-        fields = ["status"]
+        fields = ["status", "priority", "category"]
 
 
 # ─── Messages ────────────────────────────────────────────────────────────────
@@ -96,6 +104,8 @@ class TicketDetailSerializer(serializers.ModelSerializer):
             "customer_name",
             "customer_email",
             "status",
+            "priority",
+            "category",
             "created_at",
             "messages",
         ]
