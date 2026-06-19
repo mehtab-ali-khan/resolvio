@@ -158,7 +158,6 @@ export function ChatWidget({ apiKey }) {
 
     function poll() {
       if (document.hidden) return; // skip while browser tab isn't visible
-      console.log("polling...", accessToken);
 
       getTicketByToken(accessToken)
         .then(ticket => {

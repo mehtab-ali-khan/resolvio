@@ -6,14 +6,12 @@ export function getToken() {
   return localStorage.getItem("nexus_access_token");
 }
 
-export function setTokens({ access, refresh }) {
+export function setAccessToken(access) {
   localStorage.setItem("nexus_access_token", access);
-  localStorage.setItem("nexus_refresh_token", refresh);
 }
 
 export function clearTokens() {
   localStorage.removeItem("nexus_access_token");
-  localStorage.removeItem("nexus_refresh_token");
   localStorage.removeItem("nexus_user");
 }
 
@@ -26,33 +24,21 @@ function setUser(user) {
   localStorage.setItem("nexus_user", JSON.stringify(user));
 }
 
-// ─── Token helpers (add this one) ────────────────────────────────────────────
-
-function getRefreshToken() {
-  return localStorage.getItem("nexus_refresh_token");
-}
-
-// ─── Refresh access token ─────────────────────────────────────────────────────
-
 async function refreshAccessToken() {
-  const refresh = getRefreshToken();
-  if (!refresh) throw new Error("No refresh token.");
-
   const response = await fetch(`${API_BASE}/api/auth/refresh/`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ refresh }),
+    credentials: "include",
   });
 
   if (!response.ok) {
-    // Refresh token itself expired — force logout
     clearTokens();
     window.location.href = "/login";
     throw new Error("Session expired. Please log in again.");
   }
 
   const data = await response.json();
-  localStorage.setItem("nexus_access_token", data.access); // only access token comes back
+  setAccessToken(data.access);
   return data.access;
 }
 
@@ -66,14 +52,22 @@ async function apiFetch(path, options = {}, withAuth = false) {
     if (token) headers["Authorization"] = `Bearer ${token}`;
   }
 
-  const response = await fetch(`${API_BASE}${path}`, { ...options, headers });
+  const response = await fetch(`${API_BASE}${path}`, {
+    ...options,
+    headers,
+    credentials: "include",
+  });
 
   // Token expired — try refreshing once then retry
   if (response.status === 401 && withAuth) {
     try {
       const newToken = await refreshAccessToken();
       headers["Authorization"] = `Bearer ${newToken}`;
-      const retryResponse = await fetch(`${API_BASE}${path}`, { ...options, headers });
+      const retryResponse = await fetch(`${API_BASE}${path}`, {
+        ...options,
+        headers,
+        credentials: "include",
+      });
       const retryData = await retryResponse.json();
 
       if (!retryResponse.ok) {
@@ -87,7 +81,6 @@ async function apiFetch(path, options = {}, withAuth = false) {
 
       return retryData;
     } catch {
-      // refreshAccessToken already cleared tokens and redirected
       throw new Error("Session expired. Please log in again.");
     }
   }
@@ -113,7 +106,7 @@ export async function signup(payload) {
     method: "POST",
     body: JSON.stringify(payload),
   });
-  setTokens(data);
+  setAccessToken(data.access);
   setUser(data.user);
   return data;
 }
@@ -123,16 +116,22 @@ export async function login(payload) {
     method: "POST",
     body: JSON.stringify(payload),
   });
-  setTokens(data);
+  setAccessToken(data.access);
 
-  // fetch user profile after login
   const user = await apiFetch("/api/auth/me/", {}, true);
   setUser(user);
   return data;
 }
 
 export async function logout() {
-  clearTokens();
+  try {
+    await fetch(`${API_BASE}/api/auth/logout/`, {
+      method: "POST",
+      credentials: "include",
+    });
+  } finally {
+    clearTokens();
+  }
 }
 
 // ─── Agent API (auth required) ────────────────────────────────────────────────
@@ -162,7 +161,6 @@ export async function createAgentReply(ticketId, payload) {
 // ─── Widget / customer API (no auth, uses access_token UUID) ─────────────────
 
 export async function createTicket(payload) {
-  // payload must include api_key from the embed config
   return apiFetch("/api/tickets/", {
     method: "POST",
     body: JSON.stringify(payload),

@@ -95,6 +95,7 @@ REST_FRAMEWORK = {
     "DEFAULT_THROTTLE_RATES": {
         "ticket_create": "5/hour",
         "customer_message": "20/hour",
+        "ticket_list": "120/minute",
     },
 }
 
@@ -102,6 +103,9 @@ REST_FRAMEWORK = {
 # CORS
 # =================================
 CORS_ALLOWED_ORIGINS = os.environ.get("CORS_ALLOWED_ORIGINS", "").split(",")
+CORS_ALLOW_CREDENTIALS = (
+    True  # ← required, or the browser won't send/accept the refresh cookie
+)
 
 # CSRF
 CSRF_TRUSTED_ORIGINS = os.environ.get("CSRF_TRUSTED_ORIGINS", "").split(",")
@@ -128,6 +132,6 @@ DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 from datetime import timedelta
 
 SIMPLE_JWT = {
-    "ACCESS_TOKEN_LIFETIME": timedelta(minutes=300),  # adjust as needed
+    "ACCESS_TOKEN_LIFETIME": timedelta(minutes=30),  # adjust as needed
     "REFRESH_TOKEN_LIFETIME": timedelta(days=7),
 }
