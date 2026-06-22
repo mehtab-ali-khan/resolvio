@@ -1,6 +1,8 @@
+# backend/app/serializers.py
+
 from rest_framework import serializers
 
-from .models import Company, Message, Ticket, User
+from .models import Company, KnowledgeBaseArticle, Message, Ticket, User
 
 # ─── Auth ────────────────────────────────────────────────────────────────────
 
@@ -90,14 +92,41 @@ class TicketUpdateSerializer(serializers.ModelSerializer):
 # ─── Messages ────────────────────────────────────────────────────────────────
 
 
-class MessageSerializer(serializers.ModelSerializer):
+class AgentMessageSerializer(serializers.ModelSerializer):
+    """
+    Agent-facing message serializer. Includes is_internal and ai_confidence,
+    since agents need to see AI drafts and how confident the AI was.
+    Never reuse this serializer anywhere a customer could see the response.
+    """
+
+    class Meta:
+        model = Message
+        fields = [
+            "id",
+            "sender_type",
+            "body",
+            "is_internal",
+            "ai_confidence",
+            "created_at",
+        ]
+
+
+class CustomerMessageSerializer(serializers.ModelSerializer):
+    """
+    Customer-facing message serializer. Deliberately excludes is_internal
+    and ai_confidence - a customer should never see whether a message was
+    an internal AI draft or how confident the AI was about anything.
+    """
+
     class Meta:
         model = Message
         fields = ["id", "sender_type", "body", "created_at"]
 
 
-class TicketDetailSerializer(serializers.ModelSerializer):
-    messages = MessageSerializer(many=True, read_only=True)
+class AgentTicketDetailSerializer(serializers.ModelSerializer):
+    """Agent-facing ticket detail. Shows every message, including internal AI drafts."""
+
+    messages = AgentMessageSerializer(many=True, read_only=True)
 
     class Meta:
         model = Ticket
@@ -114,5 +143,60 @@ class TicketDetailSerializer(serializers.ModelSerializer):
         ]
 
 
+class CustomerTicketDetailSerializer(serializers.ModelSerializer):
+    """
+    Customer-facing ticket detail. Filters out any is_internal=True message
+    (low-confidence AI drafts meant only for agents) before it can ever
+    reach the customer's widget.
+    """
+
+    messages = serializers.SerializerMethodField()
+
+    class Meta:
+        model = Ticket
+        fields = [
+            "id",
+            "customer_name",
+            "customer_email",
+            "status",
+            "priority",
+            "category",
+            "is_new",
+            "created_at",
+            "messages",
+        ]
+
+    def get_messages(self, ticket):
+        # ticket.messages is prefetched by the view - filtering in Python here
+        # (instead of calling .filter() on the manager) reuses that prefetch
+        # instead of triggering a second database query.
+        visible_messages = [m for m in ticket.messages.all() if not m.is_internal]
+        return CustomerMessageSerializer(visible_messages, many=True).data
+
+
 class TicketMessageSerializer(serializers.Serializer):
     message = serializers.CharField()
+
+
+# ─── Knowledge base ──────────────────────────────────────────────────────────
+
+
+class KnowledgeBaseArticleSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = KnowledgeBaseArticle
+        fields = [
+            "id",
+            "title",
+            "body",
+            "index_status",
+            "index_error",
+            "created_at",
+            "updated_at",
+        ]
+        read_only_fields = [
+            "id",
+            "index_status",
+            "index_error",
+            "created_at",
+            "updated_at",
+        ]

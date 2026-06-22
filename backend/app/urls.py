@@ -8,6 +8,8 @@ from .views import (
     AgentReplyCreateView,
     TicketDetailView,
     TicketListCreateView,
+    KnowledgeBaseArticleListCreateView,
+    KnowledgeBaseArticleDetailView,
     CustomerTicketDetailView,
     CustomerMessageCreateView,
 )
@@ -25,6 +27,17 @@ urlpatterns = [
         "tickets/<int:pk>/agent-messages/",
         AgentReplyCreateView.as_view(),
         name="agent-reply",
+    ),
+    # knowledge base routes (agent only)
+    path(
+        "knowledge-base/",
+        KnowledgeBaseArticleListCreateView.as_view(),
+        name="kb-list-create",
+    ),
+    path(
+        "knowledge-base/<int:pk>/",
+        KnowledgeBaseArticleDetailView.as_view(),
+        name="kb-detail",
     ),
     # customer routes (by access_token UUID — no guessing possible)
     path(

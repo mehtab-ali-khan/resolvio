@@ -1,7 +1,11 @@
+// frontend/src/components/Signup.jsx
+
 import { useState } from "react";
+import { Link, useNavigate } from "react-router";
 import { signup } from "../api/tickets.js";
 
-export function Signup({ onSignup, onGoToLogin }) {
+export function Signup() {
+    const navigate = useNavigate();
     const [form, setForm] = useState({
         company_name: "",
         first_name: "",
@@ -22,7 +26,7 @@ export function Signup({ onSignup, onGoToLogin }) {
         setIsLoading(true);
         try {
             await signup(form);
-            onSignup();
+            navigate("/", { replace: true });
         } catch (err) {
             setError(err.message);
         } finally {
@@ -34,7 +38,6 @@ export function Signup({ onSignup, onGoToLogin }) {
         <div className="min-h-screen bg-[var(--nexus-color-bg)] flex items-center justify-center px-4 py-10">
             <div className="w-full max-w-md">
 
-                {/* Logo */}
                 <div className="flex items-center justify-center gap-3 mb-8">
                     <div className="w-10 h-10 rounded-[var(--nexus-radius-md)] [background:var(--nexus-gradient-brand)] flex items-center justify-center shadow-[var(--nexus-shadow-md)]">
                         <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
@@ -44,7 +47,6 @@ export function Signup({ onSignup, onGoToLogin }) {
                     <span className="text-xl font-bold text-[var(--nexus-color-text)] tracking-tight">Nexus Support</span>
                 </div>
 
-                {/* Card */}
                 <div className="bg-[var(--nexus-color-surface)] rounded-[var(--nexus-radius-xl)] border border-[var(--nexus-color-border)] shadow-[var(--nexus-shadow-md)] p-8">
                     <h1 className="text-xl font-bold text-[var(--nexus-color-text)] mb-1">Create your account</h1>
                     <p className="text-sm text-[var(--nexus-color-muted)] mb-6">Set up your company's support desk.</p>
@@ -130,15 +132,11 @@ export function Signup({ onSignup, onGoToLogin }) {
                     </form>
                 </div>
 
-                {/* Footer */}
                 <p className="text-center text-sm text-[var(--nexus-color-muted)] mt-5">
                     Already have an account?{" "}
-                    <button
-                        onClick={onGoToLogin}
-                        className="text-[var(--nexus-color-primary)] font-semibold hover:underline"
-                    >
+                    <Link to="/login" className="text-[var(--nexus-color-primary)] font-semibold hover:underline">
                         Sign in
-                    </button>
+                    </Link>
                 </p>
 
             </div>

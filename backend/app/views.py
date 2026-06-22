@@ -5,6 +5,7 @@ from rest_framework.generics import (
     CreateAPIView,
     ListCreateAPIView,
     RetrieveUpdateAPIView,
+    RetrieveUpdateDestroyAPIView,
 )
 from rest_framework.views import APIView
 from rest_framework.permissions import AllowAny, IsAuthenticated
@@ -15,18 +16,27 @@ from rest_framework.throttling import AnonRateThrottle, UserRateThrottle
 from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView
 from rest_framework_simplejwt.exceptions import TokenError
 
-from .models import Ticket
+from .models import Ticket, KnowledgeBaseArticle
 from .serializers import (
-    MessageSerializer,
+    CustomerMessageSerializer,
+    CustomerTicketDetailSerializer,
+    KnowledgeBaseArticleSerializer,
+    AgentMessageSerializer,
     SignupSerializer,
     TicketCreateSerializer,
-    TicketDetailSerializer,
+    AgentTicketDetailSerializer,
     TicketListSerializer,
     TicketMessageSerializer,
     TicketUpdateSerializer,
     UserSerializer,
 )
-from .services import add_agent_reply, add_customer_message, create_ticket_with_message
+from .services import (
+    add_agent_reply,
+    add_customer_message,
+    create_knowledge_base_article,
+    create_ticket_with_message,
+    update_knowledge_base_article,
+)
 
 # ─── Pagination and Throttle classes ────────────────────────────────────────────────────────────────────
 
@@ -170,13 +180,14 @@ class TicketListCreateView(ListCreateAPIView):
     def create(self, request, *args, **kwargs):
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
+        validated_data = serializer.validated_data
         ticket = create_ticket_with_message(
-            company=validated[
+            company=validated_data[
                 "api_key"
             ],  # serializer already converted this to a Company instance
-            customer_name=validated["customer_name"],
-            customer_email=validated["customer_email"],
-            message=validated["message"],
+            customer_name=validated_data["customer_name"],
+            customer_email=validated_data["customer_email"],
+            message=validated_data["message"],
         )
 
         return Response(
@@ -201,7 +212,7 @@ class TicketDetailView(RetrieveUpdateAPIView):
         return (
             TicketUpdateSerializer
             if self.request.method in ["PUT", "PATCH"]
-            else TicketDetailSerializer
+            else AgentTicketDetailSerializer
         )
 
     def retrieve(self, request, *args, **kwargs):
@@ -227,7 +238,56 @@ class AgentReplyCreateView(CreateAPIView):
             ticket=ticket, message=serializer.validated_data["message"]
         )
 
-        return Response(MessageSerializer(message).data, status=status.HTTP_201_CREATED)
+        return Response(
+            AgentMessageSerializer(message).data, status=status.HTTP_201_CREATED
+        )
+
+
+# ─── Knowledge base views (auth required, scoped to agent's company) ─────────
+
+
+class KnowledgeBaseArticleListCreateView(ListCreateAPIView):
+    permission_classes = [IsAuthenticated]
+    serializer_class = KnowledgeBaseArticleSerializer
+    pagination_class = TicketPagination
+
+    def get_queryset(self):
+        return KnowledgeBaseArticle.objects.filter(
+            company=self.request.user.company
+        ).order_by("-created_at")
+
+    def create(self, request, *args, **kwargs):
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        article = create_knowledge_base_article(
+            company=request.user.company,
+            title=serializer.validated_data["title"],
+            body=serializer.validated_data["body"],
+        )
+        return Response(
+            KnowledgeBaseArticleSerializer(article).data,
+            status=status.HTTP_201_CREATED,
+        )
+
+
+class KnowledgeBaseArticleDetailView(RetrieveUpdateDestroyAPIView):
+    permission_classes = [IsAuthenticated]
+    serializer_class = KnowledgeBaseArticleSerializer
+
+    def get_queryset(self):
+        return KnowledgeBaseArticle.objects.filter(company=self.request.user.company)
+
+    def update(self, request, *args, **kwargs):
+        partial = kwargs.pop("partial", False)
+        article = self.get_object()
+        serializer = self.get_serializer(article, data=request.data, partial=partial)
+        serializer.is_valid(raise_exception=True)
+        updated_article = update_knowledge_base_article(
+            article=article,
+            title=serializer.validated_data.get("title", article.title),
+            body=serializer.validated_data.get("body", article.body),
+        )
+        return Response(KnowledgeBaseArticleSerializer(updated_article).data)
 
 
 # ─── Customer / widget views (no auth, scoped by access_token) ───────────────
@@ -235,7 +295,7 @@ class AgentReplyCreateView(CreateAPIView):
 
 class CustomerTicketDetailView(generics.RetrieveAPIView):
     permission_classes = [AllowAny]
-    serializer_class = TicketDetailSerializer
+    serializer_class = CustomerTicketDetailSerializer
     lookup_field = "access_token"
 
     def get_queryset(self):
@@ -255,4 +315,6 @@ class CustomerMessageCreateView(CreateAPIView):
             ticket=ticket, message=serializer.validated_data["message"]
         )
 
-        return Response(MessageSerializer(message).data, status=status.HTTP_201_CREATED)
+        return Response(
+            CustomerMessageSerializer(message).data, status=status.HTTP_201_CREATED
+        )

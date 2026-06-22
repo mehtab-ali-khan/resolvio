@@ -1,3 +1,5 @@
+// frontend/src/components/ChatWidget.jsx
+
 import { useEffect, useRef, useState } from "react";
 import { createCustomerMessage, createTicket, getTicketByToken } from "../api/tickets.js";
 
@@ -69,6 +71,19 @@ function injectGlobalStyles() {
   tag.id = "nexus-styles";
   tag.textContent = styles;
   document.head.appendChild(tag);
+}
+
+// A message is "from the business" whether a human agent or the AI wrote
+// it - both render on the left, in the support color. Only the customer's
+// own messages render on the right.
+function isFromTeam(senderType) {
+  return senderType === "agent" || senderType === "ai";
+}
+
+function senderLabel(senderType) {
+  if (senderType === "agent") return "Support";
+  if (senderType === "ai") return "AI Assistant";
+  return "You";
 }
 
 const initialForm = { customer_name: "", customer_email: "", message: "" };
@@ -418,28 +433,31 @@ export function ChatWidget({ apiKey }) {
                 No messages yet.
               </p>
             )}
-            {messages.map((msg, i) => (
-              <div key={msg.id ?? i} className="nexus-message" style={{
-                display: "flex", flexDirection: "column",
-                alignItems: msg.sender_type === "agent" ? "flex-start" : "flex-end", gap: "3px",
-              }}>
-                <span style={{
-                  fontSize: "10px", fontWeight: "700", textTransform: "uppercase", letterSpacing: "0.05em",
-                  color: msg.sender_type === "agent" ? "var(--nexus-message-agent-label)" : "var(--nexus-message-customer-label)",
+            {messages.map((msg, i) => {
+              const fromTeam = isFromTeam(msg.sender_type);
+              return (
+                <div key={msg.id ?? i} className="nexus-message" style={{
+                  display: "flex", flexDirection: "column",
+                  alignItems: fromTeam ? "flex-start" : "flex-end", gap: "3px",
                 }}>
-                  {msg.sender_type === "agent" ? "Support" : "You"}
-                </span>
-                <div style={{
-                  maxWidth: "85%", padding: "10px 13px", fontSize: "13px", lineHeight: 1.5,
-                  borderRadius: msg.sender_type === "agent" ? "4px 16px 16px 16px" : "16px 4px 16px 16px",
-                  background: msg.sender_type === "agent" ? "var(--nexus-message-agent-bg)" : "var(--nexus-message-customer-bg)",
-                  color: msg.sender_type === "agent" ? "var(--nexus-message-agent-text)" : "var(--nexus-message-customer-text)",
-                  border: msg.sender_type === "agent" ? "1px solid var(--nexus-color-primary-soft)" : "1px solid var(--nexus-message-customer-border)",
-                }}>
-                  {msg.body}
+                  <span style={{
+                    fontSize: "10px", fontWeight: "700", textTransform: "uppercase", letterSpacing: "0.05em",
+                    color: fromTeam ? "var(--nexus-message-agent-label)" : "var(--nexus-message-customer-label)",
+                  }}>
+                    {senderLabel(msg.sender_type)}
+                  </span>
+                  <div style={{
+                    maxWidth: "85%", padding: "10px 13px", fontSize: "13px", lineHeight: 1.5,
+                    borderRadius: fromTeam ? "4px 16px 16px 16px" : "16px 4px 16px 16px",
+                    background: fromTeam ? "var(--nexus-message-agent-bg)" : "var(--nexus-message-customer-bg)",
+                    color: fromTeam ? "var(--nexus-message-agent-text)" : "var(--nexus-message-customer-text)",
+                    border: fromTeam ? "1px solid var(--nexus-color-primary-soft)" : "1px solid var(--nexus-message-customer-border)",
+                  }}>
+                    {msg.body}
+                  </div>
                 </div>
-              </div>
-            ))}
+              );
+            })}
             <div ref={messagesEndRef} />
           </div>
 

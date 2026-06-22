@@ -1,6 +1,8 @@
+# backend/app/models.py
 import uuid
 from django.contrib.auth.models import AbstractUser, BaseUserManager
 from django.db import models
+from pgvector.django import VectorField
 
 
 class Company(models.Model):
@@ -110,6 +112,7 @@ class Message(models.Model):
     class SenderType(models.TextChoices):
         CUSTOMER = "customer", "Customer"
         AGENT = "agent", "Agent"
+        AI = "ai", "AI"
 
     ticket = models.ForeignKey(
         Ticket,
@@ -118,6 +121,8 @@ class Message(models.Model):
     )
     sender_type = models.CharField(max_length=20, choices=SenderType.choices)
     body = models.TextField()
+    is_internal = models.BooleanField(default=False)
+    ai_confidence = models.FloatField(null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
@@ -132,3 +137,48 @@ class Message(models.Model):
 
     def __str__(self):
         return f"{self.sender_type} message for ticket #{self.ticket_id}"
+
+
+class KnowledgeBaseArticle(models.Model):
+    class IndexStatus(models.TextChoices):
+        READY = "ready", "Ready"
+        FAILED = "failed", "Failed"
+
+    company = models.ForeignKey(
+        Company,
+        related_name="knowledge_base_articles",
+        on_delete=models.CASCADE,
+    )
+    title = models.CharField(max_length=255)
+    body = models.TextField()
+    index_status = models.CharField(
+        max_length=10,
+        choices=IndexStatus.choices,
+        default=IndexStatus.FAILED,
+    )
+    index_error = models.TextField(blank=True, default="")
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    def __str__(self):
+        return self.title
+
+
+class ArticleChunk(models.Model):
+    article = models.ForeignKey(
+        KnowledgeBaseArticle,
+        related_name="chunks",
+        on_delete=models.CASCADE,
+    )
+    company = models.ForeignKey(
+        Company,
+        related_name="article_chunks",
+        on_delete=models.CASCADE,
+    )
+    content = models.TextField()
+    chunk_index = models.PositiveIntegerField()
+    embedding = VectorField(dimensions=3072)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return f"Chunk {self.chunk_index} of article #{self.article_id}"

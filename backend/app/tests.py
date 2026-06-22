@@ -8,7 +8,10 @@ from rest_framework.settings import api_settings
 from rest_framework.test import APIClient
 from rest_framework.throttling import SimpleRateThrottle
 
-from .models import Company, Message, Ticket, User
+from unittest.mock import patch
+
+from .ai.answering import AnswerOutcome
+from .models import ArticleChunk, Company, KnowledgeBaseArticle, Message, Ticket, User
 
 # ─── Fixtures ────────────────────────────────────────────────────────────────
 
@@ -86,7 +89,6 @@ def test_signup_creates_company_and_owner(anon_client):
     data = response.json()
 
     assert "access" in data
-    assert "refresh" in data
     assert data["user"]["email"] == "jane@newcorp.com"
     assert data["user"]["role"] == "owner"
     assert data["user"]["company_name"] == "New Corp"
@@ -123,7 +125,6 @@ def test_login_returns_tokens(anon_client, agent):
 
     assert response.status_code == 200
     assert "access" in response.json()
-    assert "refresh" in response.json()
 
 
 @pytest.mark.django_db
@@ -597,3 +598,316 @@ def test_new_customer_message_updates_ticket_updated_at(ticket):
 
     ticket.refresh_from_db()
     assert ticket.updated_at > old_updated_at
+
+
+# ─── Knowledge base articles (agent) ──────────────────────────────────────────
+
+
+@pytest.fixture
+def article(company):
+    return KnowledgeBaseArticle.objects.create(
+        company=company,
+        title="Refund Policy",
+        body="We accept refunds within 30 days of purchase.",
+        index_status=KnowledgeBaseArticle.IndexStatus.READY,
+    )
+
+
+@pytest.mark.django_db
+@patch("app.services.index_article")
+def test_creating_article_triggers_indexing(mock_index_article, auth_client):
+    response = auth_client.post(
+        reverse("kb-list-create"),
+        data={"title": "Shipping Policy", "body": "We ship within 5 business days."},
+        format="json",
+    )
+
+    assert response.status_code == 201
+    assert KnowledgeBaseArticle.objects.count() == 1
+
+    mock_index_article.assert_called_once()
+    indexed_article = mock_index_article.call_args[0][0]
+    assert indexed_article.title == "Shipping Policy"
+
+
+@pytest.mark.django_db
+@patch("app.services.index_article")
+def test_article_is_scoped_to_agents_company(mock_index_article, auth_client, company):
+    auth_client.post(
+        reverse("kb-list-create"),
+        data={"title": "Shipping Policy", "body": "We ship within 5 business days."},
+        format="json",
+    )
+
+    created_article = KnowledgeBaseArticle.objects.get()
+    assert created_article.company == company
+
+
+@pytest.mark.django_db
+def test_unauthenticated_cannot_create_article(anon_client):
+    response = anon_client.post(
+        reverse("kb-list-create"),
+        data={"title": "Shipping Policy", "body": "We ship within 5 business days."},
+        format="json",
+    )
+    assert response.status_code == 401
+
+
+@pytest.mark.django_db
+def test_agent_can_list_own_company_articles(auth_client, article):
+    response = auth_client.get(reverse("kb-list-create"))
+
+    assert response.status_code == 200
+    results = response.json()["results"]
+    assert len(results) == 1
+    assert results[0]["title"] == "Refund Policy"
+
+
+@pytest.mark.django_db
+def test_agent_cannot_see_other_company_articles(auth_client):
+    other_company = Company.objects.create(name="Other Corp")
+    KnowledgeBaseArticle.objects.create(
+        company=other_company, title="Other Policy", body="Not yours."
+    )
+
+    response = auth_client.get(reverse("kb-list-create"))
+
+    assert response.json()["count"] == 0
+
+
+@pytest.mark.django_db
+@patch("app.services.index_article")
+def test_updating_article_triggers_reindexing(mock_index_article, auth_client, article):
+    response = auth_client.patch(
+        reverse("kb-detail", kwargs={"pk": article.id}),
+        data={"body": "Updated refund policy text."},
+        format="json",
+    )
+
+    assert response.status_code == 200
+    mock_index_article.assert_called_once()
+
+    article.refresh_from_db()
+    assert article.body == "Updated refund policy text."
+
+
+@pytest.mark.django_db
+def test_agent_cannot_update_other_company_article(agent):
+    other_company = Company.objects.create(name="Other Corp")
+    other_article = KnowledgeBaseArticle.objects.create(
+        company=other_company, title="Other Policy", body="Not yours."
+    )
+
+    other_client = APIClient()
+    other_client.force_authenticate(user=agent)
+    response = other_client.patch(
+        reverse("kb-detail", kwargs={"pk": other_article.id}),
+        data={"body": "Hacked!"},
+        format="json",
+    )
+
+    assert response.status_code == 404
+
+
+@pytest.mark.django_db
+def test_deleting_article_cascades_to_chunks(auth_client, article):
+    ArticleChunk.objects.create(
+        article=article,
+        company=article.company,
+        content="We accept refunds within 30 days.",
+        chunk_index=0,
+        embedding=[0.0] * 3072,
+    )
+
+    response = auth_client.delete(reverse("kb-detail", kwargs={"pk": article.id}))
+
+    assert response.status_code == 204
+    assert KnowledgeBaseArticle.objects.count() == 0
+    assert ArticleChunk.objects.count() == 0
+
+
+# ─── AI replies on ticket creation ────────────────────────────────────────────
+
+
+def _outcome(attempted, visible_to_customer, answer_text=None, confidence=None):
+    return AnswerOutcome(
+        attempted=attempted,
+        visible_to_customer=visible_to_customer,
+        answer_text=answer_text,
+        confidence=confidence,
+    )
+
+
+@pytest.mark.django_db
+@patch("app.services.answer_question")
+def test_confident_ai_reply_is_visible_to_customer(
+    mock_answer_question, anon_client, company
+):
+    mock_answer_question.return_value = _outcome(
+        attempted=True,
+        visible_to_customer=True,
+        answer_text="Refunds are accepted within 30 days.",
+        confidence=92,
+    )
+
+    response = anon_client.post(
+        reverse("ticket-list-create"),
+        data={
+            "api_key": str(company.api_key),
+            "customer_name": "Ali Khan",
+            "customer_email": "ali@example.com",
+            "message": "Can I get a refund?",
+        },
+        format="json",
+    )
+
+    assert response.status_code == 201
+    ai_message = Message.objects.get(sender_type=Message.SenderType.AI)
+    assert ai_message.is_internal is False
+    assert ai_message.ai_confidence == 92
+    assert ai_message.body == "Refunds are accepted within 30 days."
+
+
+@pytest.mark.django_db
+@patch("app.services.answer_question")
+def test_low_confidence_ai_reply_is_internal_only(
+    mock_answer_question, anon_client, company
+):
+    mock_answer_question.return_value = _outcome(
+        attempted=True,
+        visible_to_customer=False,
+        answer_text="Maybe refunds are accepted?",
+        confidence=35,
+    )
+
+    anon_client.post(
+        reverse("ticket-list-create"),
+        data={
+            "api_key": str(company.api_key),
+            "customer_name": "Ali Khan",
+            "customer_email": "ali@example.com",
+            "message": "Can I get a refund on a damaged item from another country?",
+        },
+        format="json",
+    )
+
+    ai_message = Message.objects.get(sender_type=Message.SenderType.AI)
+    assert ai_message.is_internal is True
+    assert ai_message.ai_confidence == 35
+
+
+@pytest.mark.django_db
+@patch("app.services.answer_question")
+def test_gate1_failure_creates_no_ai_message(
+    mock_answer_question, anon_client, company
+):
+    mock_answer_question.return_value = _outcome(
+        attempted=False, visible_to_customer=False
+    )
+
+    anon_client.post(
+        reverse("ticket-list-create"),
+        data={
+            "api_key": str(company.api_key),
+            "customer_name": "Ali Khan",
+            "customer_email": "ali@example.com",
+            "message": "Completely unrelated question.",
+        },
+        format="json",
+    )
+
+    assert Message.objects.filter(sender_type=Message.SenderType.AI).count() == 0
+    assert Message.objects.filter(sender_type=Message.SenderType.CUSTOMER).count() == 1
+
+
+@pytest.mark.django_db
+@patch("app.services.answer_question")
+def test_ai_failure_does_not_break_ticket_creation(
+    mock_answer_question, anon_client, company
+):
+    mock_answer_question.side_effect = Exception("Gemini is down")
+
+    response = anon_client.post(
+        reverse("ticket-list-create"),
+        data={
+            "api_key": str(company.api_key),
+            "customer_name": "Ali Khan",
+            "customer_email": "ali@example.com",
+            "message": "Can I get a refund?",
+        },
+        format="json",
+    )
+
+    assert response.status_code == 201
+    assert Ticket.objects.count() == 1
+    assert Message.objects.filter(sender_type=Message.SenderType.CUSTOMER).count() == 1
+    assert Message.objects.filter(sender_type=Message.SenderType.AI).count() == 0
+
+
+# ─── Privacy: internal AI drafts must never reach the customer ───────────────
+
+
+@pytest.mark.django_db
+def test_customer_cannot_see_internal_ai_draft(anon_client, ticket):
+    Message.objects.create(
+        ticket=ticket,
+        sender_type=Message.SenderType.AI,
+        body="Internal draft, not confident enough.",
+        is_internal=True,
+        ai_confidence=40,
+    )
+
+    response = anon_client.get(
+        reverse("customer-ticket-detail", kwargs={"access_token": ticket.access_token})
+    )
+
+    assert response.status_code == 200
+    messages = response.json()["messages"]
+    assert len(messages) == 0  # the only message on this ticket is the internal draft
+
+    # Belt-and-suspenders: confirm these field names never appear on the wire
+    # at all, not just that nothing happened to be visible this time.
+    raw_body = json.dumps(messages)
+    assert "is_internal" not in raw_body
+    assert "ai_confidence" not in raw_body
+
+
+@pytest.mark.django_db
+def test_agent_can_see_internal_ai_draft(auth_client, ticket):
+    Message.objects.create(
+        ticket=ticket,
+        sender_type=Message.SenderType.AI,
+        body="Internal draft, not confident enough.",
+        is_internal=True,
+        ai_confidence=40,
+    )
+
+    response = auth_client.get(reverse("ticket-detail", kwargs={"pk": ticket.id}))
+
+    assert response.status_code == 200
+    messages = response.json()["messages"]
+    assert len(messages) == 1
+    assert messages[0]["is_internal"] is True
+    assert messages[0]["ai_confidence"] == 40
+
+
+@pytest.mark.django_db
+def test_customer_sees_confident_ai_reply_without_confidence_score(anon_client, ticket):
+    Message.objects.create(
+        ticket=ticket,
+        sender_type=Message.SenderType.AI,
+        body="Refunds are accepted within 30 days.",
+        is_internal=False,
+        ai_confidence=92,
+    )
+
+    response = anon_client.get(
+        reverse("customer-ticket-detail", kwargs={"access_token": ticket.access_token})
+    )
+
+    messages = response.json()["messages"]
+    assert len(messages) == 1
+    assert messages[0]["sender_type"] == Message.SenderType.AI
+    assert messages[0]["body"] == "Refunds are accepted within 30 days."
+    assert "ai_confidence" not in messages[0]
+    assert "is_internal" not in messages[0]

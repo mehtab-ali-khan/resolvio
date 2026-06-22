@@ -1,39 +1,35 @@
-import { useState } from "react";
-import { getToken, getUser, logout } from "./api/tickets.js";
-import { AgentDashboard } from "./components/AgentDashboard.jsx";
+// frontend/src/App.jsx
+
+import { BrowserRouter, Navigate, Route, Routes } from "react-router";
+import { RequireAuth } from "./components/auth/RequireAuth.jsx";
+import { RequireGuest } from "./components/auth/RequireGuest.jsx";
+import { AppLayout } from "./components/layout/AppLayout.jsx";
 import { Login } from "./components/Login.jsx";
 import { Signup } from "./components/Signup.jsx";
+import { TicketsPage } from "./pages/TicketsPage.jsx";
+import { KnowledgeBasePage } from "./pages/KnowledgeBasePage.jsx";
+import { AnalyticsPage } from "./pages/AnalyticsPage.jsx";
 
 export default function App() {
-  const [page, setPage] = useState(() => {
-    return getToken() ? "dashboard" : "login";
-  });
+  return (
+    <BrowserRouter>
+      <Routes>
+        <Route element={<RequireGuest />}>
+          <Route path="/login" element={<Login />} />
+          <Route path="/signup" element={<Signup />} />
+        </Route>
 
-  const [user, setUser] = useState(() => getUser());
+        <Route element={<RequireAuth />}>
+          <Route element={<AppLayout />}>
+            <Route index element={<Navigate to="/tickets" replace />} />
+            <Route path="/tickets" element={<TicketsPage />} />
+            <Route path="/knowledge-base" element={<KnowledgeBasePage />} />
+            <Route path="/analytics" element={<AnalyticsPage />} />
+          </Route>
+        </Route>
 
-  function handleLogin() {
-    setUser(getUser());
-    setPage("dashboard");
-  }
-
-  function handleSignup() {
-    setUser(getUser());
-    setPage("dashboard");
-  }
-
-  function handleLogout() {
-    logout();
-    setUser(null);
-    setPage("login");
-  }
-
-  if (page === "login") {
-    return <Login onLogin={handleLogin} onGoToSignup={() => setPage("signup")} />;
-  }
-
-  if (page === "signup") {
-    return <Signup onSignup={handleSignup} onGoToLogin={() => setPage("login")} />;
-  }
-
-  return <AgentDashboard user={user} onLogout={handleLogout} />;
+        <Route path="*" element={<Navigate to="/" replace />} />
+      </Routes>
+    </BrowserRouter>
+  );
 }

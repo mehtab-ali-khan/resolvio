@@ -1,7 +1,11 @@
+// frontend/src/components/Login.jsx
+
 import { useState } from "react";
+import { Link, useNavigate } from "react-router";
 import { login } from "../api/tickets.js";
 
-export function Login({ onLogin, onGoToSignup }) {
+export function Login() {
+    const navigate = useNavigate();
     const [form, setForm] = useState({ email: "", password: "" });
     const [error, setError] = useState("");
     const [isLoading, setIsLoading] = useState(false);
@@ -16,7 +20,7 @@ export function Login({ onLogin, onGoToSignup }) {
         setIsLoading(true);
         try {
             await login(form);
-            onLogin();
+            navigate("/", { replace: true });
         } catch (err) {
             setError(err.message);
         } finally {
@@ -28,7 +32,6 @@ export function Login({ onLogin, onGoToSignup }) {
         <div className="min-h-screen bg-[var(--nexus-color-bg)] flex items-center justify-center px-4">
             <div className="w-full max-w-md">
 
-                {/* Logo */}
                 <div className="flex items-center justify-center gap-3 mb-8">
                     <div className="w-10 h-10 rounded-[var(--nexus-radius-md)] [background:var(--nexus-gradient-brand)] flex items-center justify-center shadow-[var(--nexus-shadow-md)]">
                         <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
@@ -38,7 +41,6 @@ export function Login({ onLogin, onGoToSignup }) {
                     <span className="text-xl font-bold text-[var(--nexus-color-text)] tracking-tight">Nexus Support</span>
                 </div>
 
-                {/* Card */}
                 <div className="bg-[var(--nexus-color-surface)] rounded-[var(--nexus-radius-xl)] border border-[var(--nexus-color-border)] shadow-[var(--nexus-shadow-md)] p-8">
                     <h1 className="text-xl font-bold text-[var(--nexus-color-text)] mb-1">Welcome back</h1>
                     <p className="text-sm text-[var(--nexus-color-muted)] mb-6">Sign in to your agent dashboard.</p>
@@ -86,15 +88,11 @@ export function Login({ onLogin, onGoToSignup }) {
                     </form>
                 </div>
 
-                {/* Footer */}
                 <p className="text-center text-sm text-[var(--nexus-color-muted)] mt-5">
                     Don't have an account?{" "}
-                    <button
-                        onClick={onGoToSignup}
-                        className="text-[var(--nexus-color-primary)] font-semibold hover:underline"
-                    >
+                    <Link to="/signup" className="text-[var(--nexus-color-primary)] font-semibold hover:underline">
                         Create one
-                    </button>
+                    </Link>
                 </p>
 
             </div>
