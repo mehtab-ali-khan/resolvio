@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { createCustomerMessage, createTicket, getTicketByToken } from "../api/tickets.js";
 
 const STORAGE_KEY = "nexus_ticket_token";
-const POLL_INTERVAL_MS = 10000;
+const POLL_INTERVAL_MS = 60000;
 
 const styles = `
   #nexus-support-widget-root {
@@ -172,7 +172,7 @@ export function ChatWidget({ apiKey }) {
     if (!accessToken) return;
 
     function poll() {
-      if (document.hidden) return; // skip while browser tab isn't visible
+      // if (document.hidden) return; // skip while browser tab isn't visible
 
       getTicketByToken(accessToken)
         .then(ticket => {

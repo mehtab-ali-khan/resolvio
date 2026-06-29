@@ -6,7 +6,7 @@ import { Avatar, EmptyState } from "../components/shared/ui.jsx";
 import { NewBadge, StatusBadge } from "../components/tickets/StatusBadge.jsx";
 import { TicketDetail } from "../components/tickets/TicketDetail.jsx";
 
-const LIST_POLL_INTERVAL_MS = 30000;
+const LIST_POLL_INTERVAL_MS = 60000;
 
 function sortTickets(list) {
     return [...list].sort((a, b) => {

@@ -200,3 +200,10 @@ class KnowledgeBaseArticleSerializer(serializers.ModelSerializer):
             "created_at",
             "updated_at",
         ]
+
+    def validate_body(self, value):
+        if len(value.strip()) < 100:
+            raise serializers.ValidationError(
+                "Article body must be at least 100 characters."
+            )
+        return value
