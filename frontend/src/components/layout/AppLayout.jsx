@@ -1,7 +1,8 @@
 // frontend/src/components/layout/AppLayout.jsx
 
+import { useEffect, useState } from "react";
 import { NavLink, Outlet, useNavigate } from "react-router";
-import { getUser, logout } from "../../api/tickets.js";
+import { getCurrentUser, logout } from "../../api/tickets.js";
 
 const NAV_ITEMS = [
     { to: "/tickets", label: "Tickets", icon: "🎫" },
@@ -10,11 +11,18 @@ const NAV_ITEMS = [
 ];
 
 export function AppLayout() {
-    const user = getUser();
+    const [user, setUser] = useState(null);
     const navigate = useNavigate();
 
+    useEffect(() => {
+        getCurrentUser()
+            .then(setUser)
+            .catch(() => {
+            });
+    }, []);
+
     async function handleLogout() {
-        await logout();
+        logout();
         navigate("/login", { replace: true });
     }
 

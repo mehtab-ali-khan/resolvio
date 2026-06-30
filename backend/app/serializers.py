@@ -34,6 +34,11 @@ class SignupSerializer(serializers.Serializer):
         )
 
 
+class LoginSerializer(serializers.Serializer):
+    email = serializers.EmailField()
+    password = serializers.CharField(write_only=True, style={"input_type": "password"})
+
+
 class UserSerializer(serializers.ModelSerializer):
     company_name = serializers.CharField(source="company.name", read_only=True)
     company_api_key = serializers.UUIDField(source="company.api_key", read_only=True)

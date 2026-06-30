@@ -88,7 +88,7 @@ def test_signup_creates_company_and_owner(anon_client):
     assert response.status_code == 201
     data = response.json()
 
-    assert "access" in data
+    assert "token" in data
     assert data["user"]["email"] == "jane@newcorp.com"
     assert data["user"]["role"] == "owner"
     assert data["user"]["company_name"] == "New Corp"
@@ -116,7 +116,7 @@ def test_signup_rejects_duplicate_email(anon_client, agent):
 
 
 @pytest.mark.django_db
-def test_login_returns_tokens(anon_client, agent):
+def test_login_returns_token(anon_client, agent):
     response = anon_client.post(
         reverse("login"),
         data={"email": "agent@acme.com", "password": "testpass123"},
@@ -124,7 +124,7 @@ def test_login_returns_tokens(anon_client, agent):
     )
 
     assert response.status_code == 200
-    assert "access" in response.json()
+    assert "token" in response.json()
 
 
 @pytest.mark.django_db
@@ -136,6 +136,26 @@ def test_login_rejects_wrong_password(anon_client, agent):
     )
 
     assert response.status_code == 401
+
+
+@pytest.mark.django_db
+def test_login_returns_same_token_every_time(anon_client, agent):
+    """
+    Logging in twice (simulating two devices) must return the exact same
+    token both times - this is the "one token per user" rule we chose.
+    """
+    first_response = anon_client.post(
+        reverse("login"),
+        data={"email": "agent@acme.com", "password": "testpass123"},
+        format="json",
+    )
+    second_response = anon_client.post(
+        reverse("login"),
+        data={"email": "agent@acme.com", "password": "testpass123"},
+        format="json",
+    )
+
+    assert first_response.json()["token"] == second_response.json()["token"]
 
 
 # ─── Ticket creation (widget / customer) ─────────────────────────────────────
@@ -608,7 +628,11 @@ def article(company):
     return KnowledgeBaseArticle.objects.create(
         company=company,
         title="Refund Policy",
-        body="We accept refunds within 30 days of purchase.",
+        body=(
+            "We accept refunds within 30 days of purchase. The item must be "
+            "unused and in its original packaging. Refunds are processed "
+            "within 5 to 7 business days after we receive the returned item."
+        ),
         index_status=KnowledgeBaseArticle.IndexStatus.READY,
     )
 
@@ -618,7 +642,15 @@ def article(company):
 def test_creating_article_triggers_indexing(mock_index_article, auth_client):
     response = auth_client.post(
         reverse("kb-list-create"),
-        data={"title": "Shipping Policy", "body": "We ship within 5 business days."},
+        data={
+            "title": "Shipping Policy",
+            "body": (
+                "We ship within 5 business days of order confirmation. "
+                "Standard shipping takes 3 to 7 additional days depending on "
+                "your location. Express shipping options are available at "
+                "checkout for an additional fee."
+            ),
+        },
         format="json",
     )
 
@@ -635,7 +667,15 @@ def test_creating_article_triggers_indexing(mock_index_article, auth_client):
 def test_article_is_scoped_to_agents_company(mock_index_article, auth_client, company):
     auth_client.post(
         reverse("kb-list-create"),
-        data={"title": "Shipping Policy", "body": "We ship within 5 business days."},
+        data={
+            "title": "Shipping Policy",
+            "body": (
+                "We ship within 5 business days of order confirmation. "
+                "Standard shipping takes 3 to 7 additional days depending on "
+                "your location. Express shipping options are available at "
+                "checkout for an additional fee."
+            ),
+        },
         format="json",
     )
 
@@ -647,7 +687,15 @@ def test_article_is_scoped_to_agents_company(mock_index_article, auth_client, co
 def test_unauthenticated_cannot_create_article(anon_client):
     response = anon_client.post(
         reverse("kb-list-create"),
-        data={"title": "Shipping Policy", "body": "We ship within 5 business days."},
+        data={
+            "title": "Shipping Policy",
+            "body": (
+                "We ship within 5 business days of order confirmation. "
+                "Standard shipping takes 3 to 7 additional days depending on "
+                "your location. Express shipping options are available at "
+                "checkout for an additional fee."
+            ),
+        },
         format="json",
     )
     assert response.status_code == 401
@@ -667,7 +715,13 @@ def test_agent_can_list_own_company_articles(auth_client, article):
 def test_agent_cannot_see_other_company_articles(auth_client):
     other_company = Company.objects.create(name="Other Corp")
     KnowledgeBaseArticle.objects.create(
-        company=other_company, title="Other Policy", body="Not yours."
+        company=other_company,
+        title="Other Policy",
+        body=(
+            "This is a knowledge base article belonging to a different "
+            "company entirely, and it should never appear in another "
+            "company's article list under any circumstances at all."
+        ),
     )
 
     response = auth_client.get(reverse("kb-list-create"))
@@ -680,7 +734,13 @@ def test_agent_cannot_see_other_company_articles(auth_client):
 def test_updating_article_triggers_reindexing(mock_index_article, auth_client, article):
     response = auth_client.patch(
         reverse("kb-detail", kwargs={"pk": article.id}),
-        data={"body": "Updated refund policy text."},
+        data={
+            "body": (
+                "Updated refund policy text. We now accept refunds within "
+                "45 days of purchase instead of 30, as long as the item is "
+                "unused and returned in its original packaging with a receipt."
+            )
+        },
         format="json",
     )
 
@@ -688,21 +748,29 @@ def test_updating_article_triggers_reindexing(mock_index_article, auth_client, a
     mock_index_article.assert_called_once()
 
     article.refresh_from_db()
-    assert article.body == "Updated refund policy text."
+    assert "45 days" in article.body
 
 
 @pytest.mark.django_db
 def test_agent_cannot_update_other_company_article(agent):
     other_company = Company.objects.create(name="Other Corp")
     other_article = KnowledgeBaseArticle.objects.create(
-        company=other_company, title="Other Policy", body="Not yours."
+        company=other_company,
+        title="Other Policy",
+        body=(
+            "This is a knowledge base article belonging to a different "
+            "company entirely, and it should never be editable by an agent "
+            "from another company under any circumstances at all."
+        ),
     )
 
     other_client = APIClient()
     other_client.force_authenticate(user=agent)
     response = other_client.patch(
         reverse("kb-detail", kwargs={"pk": other_article.id}),
-        data={"body": "Hacked!"},
+        data={
+            "body": "Hacked! Hacked! Hacked! Hacked! Hacked! Hacked! Hacked! Hacked! Hacked! Hacked!"
+        },
         format="json",
     )
 

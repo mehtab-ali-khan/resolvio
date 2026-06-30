@@ -1,24 +1,22 @@
+# backend/app/urls.py
+
 from django.urls import path
 from .views import (
-    SignupView,
-    CookieTokenObtainPairView,
-    CookieTokenRefreshView,
-    LogoutView,
-    MeView,
     AgentReplyCreateView,
+    CustomerMessageCreateView,
+    CustomerTicketDetailView,
+    KnowledgeBaseArticleDetailView,
+    KnowledgeBaseArticleListCreateView,
+    LoginView,
+    MeView,
+    SignupView,
     TicketDetailView,
     TicketListCreateView,
-    KnowledgeBaseArticleListCreateView,
-    KnowledgeBaseArticleDetailView,
-    CustomerTicketDetailView,
-    CustomerMessageCreateView,
 )
 
 urlpatterns = [
     path("auth/signup/", SignupView.as_view(), name="signup"),
-    path("auth/login/", CookieTokenObtainPairView.as_view(), name="login"),
-    path("auth/refresh/", CookieTokenRefreshView.as_view(), name="token_refresh"),
-    path("auth/logout/", LogoutView.as_view(), name="logout"),
+    path("auth/login/", LoginView.as_view(), name="login"),
     path("auth/me/", MeView.as_view(), name="me"),
     # agent routes (by numeric pk)
     path("tickets/", TicketListCreateView.as_view(), name="ticket-list-create"),

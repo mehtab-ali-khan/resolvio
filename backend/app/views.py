@@ -1,5 +1,6 @@
+# backend/app/views.py
+
 from django.shortcuts import get_object_or_404
-from django.conf import settings
 from rest_framework import generics, status
 from rest_framework.generics import (
     CreateAPIView,
@@ -10,11 +11,10 @@ from rest_framework.generics import (
 from rest_framework.views import APIView
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
-from rest_framework_simplejwt.tokens import RefreshToken
+from rest_framework.authtoken.models import Token
 from rest_framework.pagination import PageNumberPagination
 from rest_framework.throttling import AnonRateThrottle, UserRateThrottle
-from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView
-from rest_framework_simplejwt.exceptions import TokenError
+from django.contrib.auth import authenticate
 
 from .models import Ticket, KnowledgeBaseArticle
 from .serializers import (
@@ -22,6 +22,7 @@ from .serializers import (
     CustomerTicketDetailSerializer,
     KnowledgeBaseArticleSerializer,
     AgentMessageSerializer,
+    LoginSerializer,
     SignupSerializer,
     TicketCreateSerializer,
     AgentTicketDetailSerializer,
@@ -59,25 +60,16 @@ class CustomerMessageThrottle(AnonRateThrottle):
     scope = "customer_message"
 
 
-# ─── Cookie helper ─────────────────────────────────────────────────────────────
-
-
-def set_refresh_cookie(response, refresh_token):
-    response.set_cookie(
-        key="refresh_token",
-        value=str(refresh_token),
-        httponly=True,
-        secure=not settings.DEBUG,
-        samesite="Lax",
-        max_age=int(settings.SIMPLE_JWT["REFRESH_TOKEN_LIFETIME"].total_seconds()),
-        path="/api/auth/",
-    )
-
-
 # ─── Auth ────────────────────────────────────────────────────────────────────
 
 
 class SignupView(generics.CreateAPIView):
+    """
+    Creates a new company + owner user, then returns the same kind of
+    {user, token} response as login - so the frontend can treat signup
+    and login identically once the request succeeds.
+    """
+
     permission_classes = [AllowAny]
     serializer_class = SignupSerializer
 
@@ -85,63 +77,51 @@ class SignupView(generics.CreateAPIView):
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         user = serializer.save()
-        refresh = RefreshToken.for_user(user)
 
-        response = Response(
+        token, _ = Token.objects.get_or_create(user=user)
+
+        return Response(
             {
                 "user": UserSerializer(user).data,
-                "access": str(refresh.access_token),
+                "token": token.key,
             },
             status=status.HTTP_201_CREATED,
         )
-        set_refresh_cookie(response, refresh)
-        return response
 
 
-class CookieTokenObtainPairView(TokenObtainPairView):
-    """Login. Lets simplejwt validate credentials as normal, then pulls the
-    refresh token out of the JSON body and puts it in an httpOnly cookie."""
+class LoginView(APIView):
+    """
+    Validates email + password, then returns this user's token - the SAME
+    token every time, no matter how many times they log in or from how
+    many devices. We never delete or rotate it here.
+    """
 
-    def post(self, request, *args, **kwargs):
-        response = super().post(request, *args, **kwargs)
-        if response.status_code == 200:
-            refresh_token = response.data.pop("refresh", None)
-            if refresh_token:
-                set_refresh_cookie(response, refresh_token)
-        return response
-
-
-class CookieTokenRefreshView(TokenRefreshView):
-    """Reads the refresh token from the httpOnly cookie instead of the
-    request body, then hands off to simplejwt's normal validation."""
-
-    def post(self, request, *args, **kwargs):
-        refresh_token = request.COOKIES.get("refresh_token")
-        if refresh_token is None:
-            return Response(
-                {"detail": "No refresh token found"},
-                status=status.HTTP_401_UNAUTHORIZED,
-            )
-
-        serializer = self.get_serializer(data={"refresh": refresh_token})
-        try:
-            serializer.is_valid(raise_exception=True)
-        except TokenError:
-            return Response(
-                {"detail": "Invalid or expired refresh token"},
-                status=status.HTTP_401_UNAUTHORIZED,
-            )
-
-        return Response(serializer.validated_data, status=status.HTTP_200_OK)
-
-
-class LogoutView(APIView):
     permission_classes = [AllowAny]
 
     def post(self, request):
-        response = Response({"detail": "Logged out"}, status=status.HTTP_200_OK)
-        response.delete_cookie("refresh_token", path="/api/auth/")
-        return response
+        serializer = LoginSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+
+        user = authenticate(
+            request,
+            username=serializer.validated_data["email"],
+            password=serializer.validated_data["password"],
+        )
+        if user is None:
+            return Response(
+                {"detail": "Invalid email or password."},
+                status=status.HTTP_401_UNAUTHORIZED,
+            )
+
+        token, _ = Token.objects.get_or_create(user=user)
+
+        return Response(
+            {
+                "user": UserSerializer(user).data,
+                "token": token.key,
+            },
+            status=status.HTTP_200_OK,
+        )
 
 
 class MeView(APIView):
@@ -182,9 +162,7 @@ class TicketListCreateView(ListCreateAPIView):
         serializer.is_valid(raise_exception=True)
         validated_data = serializer.validated_data
         ticket = create_ticket_with_message(
-            company=validated_data[
-                "api_key"
-            ],  # serializer already converted this to a Company instance
+            company=validated_data["api_key"],
             customer_name=validated_data["customer_name"],
             customer_email=validated_data["customer_email"],
             message=validated_data["message"],

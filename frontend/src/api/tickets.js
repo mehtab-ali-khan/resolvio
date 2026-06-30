@@ -2,52 +2,28 @@
 
 const API_BASE = import.meta.env.VITE_API_URL || "http://localhost:8000";
 
-// ─── Token helpers ────────────────────────────────────────────────────────────
+// ─── Token helper ──────────────────────────────────────────────────────────
+// Only one thing is ever stored: the token itself. No user object, no
+// refresh token. Anything about "who is this user" is fetched fresh from
+// /api/auth/me/ whenever it's needed.
+
+const TOKEN_KEY = "nexus_token";
 
 export function getToken() {
-  return localStorage.getItem("nexus_access_token");
+  return localStorage.getItem(TOKEN_KEY);
 }
 
-export function setAccessToken(access) {
-  localStorage.setItem("nexus_access_token", access);
+export function setToken(token) {
+  localStorage.setItem(TOKEN_KEY, token);
 }
 
-export function clearTokens() {
-  localStorage.removeItem("nexus_access_token");
-  localStorage.removeItem("nexus_user");
+export function clearToken() {
+  localStorage.removeItem(TOKEN_KEY);
 }
 
-export function getUser() {
-  const raw = localStorage.getItem("nexus_user");
-  return raw ? JSON.parse(raw) : null;
-}
-
-function setUser(user) {
-  localStorage.setItem("nexus_user", JSON.stringify(user));
-}
-
-async function refreshAccessToken() {
-  const response = await fetch(`${API_BASE}/api/auth/refresh/`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    credentials: "include",
-  });
-
-  if (!response.ok) {
-    clearTokens();
-    window.location.href = "/login";
-    throw new Error("Session expired. Please log in again.");
-  }
-
-  const data = await response.json();
-  setAccessToken(data.access);
-  return data.access;
-}
-
-// ─── Response parsing ──────────────────────────────────────────────────────────
+// ─── Response parsing ──────────────────────────────────────────────────────
 // Separated out because DELETE requests return 204 No Content - an empty
-// body that response.json() cannot parse. Both the normal path and the
-// retry-after-refresh path need this same handling, so it lives in one place.
+// body that response.json() cannot parse.
 
 async function parseResponse(response) {
   if (response.status === 204) {
@@ -72,34 +48,24 @@ async function parseResponse(response) {
 }
 
 // ─── Base fetch ───────────────────────────────────────────────────────────────
+// No more "withAuth" retry-after-refresh dance. If the token is invalid or
+// missing, the backend just returns 401 and the caller deals with it -
+// usually by sending the person back to /login.
 
 export async function apiFetch(path, options = {}, withAuth = false) {
   const headers = { "Content-Type": "application/json", ...options.headers };
 
   if (withAuth) {
     const token = getToken();
-    if (token) headers["Authorization"] = `Bearer ${token}`;
+    if (token) headers["Authorization"] = `Token ${token}`;
   }
 
-  const response = await fetch(`${API_BASE}${path}`, {
-    ...options,
-    headers,
-    credentials: "include",
-  });
+  const response = await fetch(`${API_BASE}${path}`, { ...options, headers });
 
   if (response.status === 401 && withAuth) {
-    try {
-      const newToken = await refreshAccessToken();
-      headers["Authorization"] = `Bearer ${newToken}`;
-      const retryResponse = await fetch(`${API_BASE}${path}`, {
-        ...options,
-        headers,
-        credentials: "include",
-      });
-      return await parseResponse(retryResponse);
-    } catch {
-      throw new Error("Session expired. Please log in again.");
-    }
+    clearToken();
+    window.location.href = "/login";
+    throw new Error("Session expired. Please log in again.");
   }
 
   return await parseResponse(response);
@@ -112,8 +78,7 @@ export async function signup(payload) {
     method: "POST",
     body: JSON.stringify(payload),
   });
-  setAccessToken(data.access);
-  setUser(data.user);
+  setToken(data.token);
   return data;
 }
 
@@ -122,22 +87,19 @@ export async function login(payload) {
     method: "POST",
     body: JSON.stringify(payload),
   });
-  setAccessToken(data.access);
-
-  const user = await apiFetch("/api/auth/me/", {}, true);
-  setUser(user);
+  setToken(data.token);
   return data;
 }
 
-export async function logout() {
-  try {
-    await fetch(`${API_BASE}/api/auth/logout/`, {
-      method: "POST",
-      credentials: "include",
-    });
-  } finally {
-    clearTokens();
-  }
+export function logout() {
+  // No backend call at all - logging out only clears this device's
+  // storage. The token in the database is untouched, so any other device
+  // still logged in with the same token keeps working.
+  clearToken();
+}
+
+export async function getCurrentUser() {
+  return apiFetch("/api/auth/me/", {}, true);
 }
 
 // ─── Agent API (auth required) ────────────────────────────────────────────────
