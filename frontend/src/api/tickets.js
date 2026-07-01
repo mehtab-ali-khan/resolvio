@@ -3,9 +3,6 @@
 const API_BASE = import.meta.env.VITE_API_URL || "http://localhost:8000";
 
 // ─── Token helper ──────────────────────────────────────────────────────────
-// Only one thing is ever stored: the token itself. No user object, no
-// refresh token. Anything about "who is this user" is fetched fresh from
-// /api/auth/me/ whenever it's needed.
 
 const TOKEN_KEY = "nexus_token";
 
@@ -22,8 +19,6 @@ export function clearToken() {
 }
 
 // ─── Response parsing ──────────────────────────────────────────────────────
-// Separated out because DELETE requests return 204 No Content - an empty
-// body that response.json() cannot parse.
 
 async function parseResponse(response) {
   if (response.status === 204) {
@@ -48,9 +43,6 @@ async function parseResponse(response) {
 }
 
 // ─── Base fetch ───────────────────────────────────────────────────────────────
-// No more "withAuth" retry-after-refresh dance. If the token is invalid or
-// missing, the backend just returns 401 and the caller deals with it -
-// usually by sending the person back to /login.
 
 export async function apiFetch(path, options = {}, withAuth = false) {
   const headers = { "Content-Type": "application/json", ...options.headers };
@@ -92,9 +84,6 @@ export async function login(payload) {
 }
 
 export function logout() {
-  // No backend call at all - logging out only clears this device's
-  // storage. The token in the database is untouched, so any other device
-  // still logged in with the same token keeps working.
   clearToken();
 }
 
@@ -104,8 +93,15 @@ export async function getCurrentUser() {
 
 // ─── Agent API (auth required) ────────────────────────────────────────────────
 
-export async function listTickets(page = 1) {
-  return apiFetch(`/api/tickets/?page=${page}`, {}, true);
+export async function listTickets(page = 1, status = "all", search = "") {
+  const params = new URLSearchParams({ page });
+  if (status !== "all") {
+    params.set("status", status);
+  }
+  if (search.trim()) {
+    params.set("search", search.trim());
+  }
+  return apiFetch(`/api/tickets/?${params.toString()}`, {}, true);
 }
 
 export async function getTicketById(ticketId) {

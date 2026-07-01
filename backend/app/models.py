@@ -3,6 +3,8 @@ import uuid
 from django.contrib.auth.models import AbstractUser, BaseUserManager
 from django.db import models
 from pgvector.django import VectorField
+from django.contrib.postgres.search import SearchVectorField
+from django.contrib.postgres.indexes import GinIndex
 
 
 class Company(models.Model):
@@ -64,7 +66,6 @@ class User(AbstractUser):
 class Ticket(models.Model):
     class Status(models.TextChoices):
         OPEN = "open", "Open"
-        IN_PROGRESS = "in_progress", "In Progress"
         RESOLVED = "resolved", "Resolved"
 
     class Priority(models.TextChoices):
@@ -103,6 +104,12 @@ class Ticket(models.Model):
     is_new = models.BooleanField(default=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
+    search_vector = SearchVectorField(null=True, editable=False)
+
+    class Meta:
+        indexes = [
+            GinIndex(fields=["search_vector"], name="ticket_search_vector_idx"),
+        ]
 
     def __str__(self):
         return f"Ticket #{self.id} - {self.status}"

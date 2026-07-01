@@ -1,6 +1,7 @@
 # backend/app/views.py
 
 from django.shortcuts import get_object_or_404
+from django.contrib.postgres.search import SearchQuery
 from rest_framework import generics, status
 from rest_framework.generics import (
     CreateAPIView,
@@ -146,9 +147,17 @@ class TicketListCreateView(ListCreateAPIView):
         return [AllowAny()] if self.request.method == "POST" else [IsAuthenticated()]
 
     def get_queryset(self):
-        return Ticket.objects.filter(company=self.request.user.company).order_by(
-            "-is_new", "-updated_at"
-        )
+        queryset = Ticket.objects.filter(company=self.request.user.company)
+
+        status_filter = self.request.query_params.get("status")
+        if status_filter in (Ticket.Status.OPEN, Ticket.Status.RESOLVED):
+            queryset = queryset.filter(status=status_filter)
+
+        search_term = self.request.query_params.get("search", "").strip()
+        if search_term:
+            queryset = queryset.filter(search_vector=SearchQuery(search_term))
+
+        return queryset.order_by("-is_new", "-updated_at")
 
     def get_serializer_class(self):
         return (

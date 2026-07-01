@@ -2,7 +2,6 @@
 
 export const TICKET_STATUSES = [
     { value: "open", label: "Open" },
-    { value: "in_progress", label: "In progress" },
     { value: "resolved", label: "Resolved" },
 ];
 
@@ -14,12 +13,10 @@ export const statusLabels = TICKET_STATUSES.reduce((labels, status) => {
 export function StatusBadge({ status }) {
     const styles = {
         open: "bg-[var(--nexus-color-accent-soft)] text-[var(--nexus-color-accent-strong)] ring-1 ring-[var(--nexus-color-accent-soft)]",
-        in_progress: "bg-[var(--nexus-color-warning-soft)] text-[var(--nexus-color-warning)] ring-1 ring-[var(--nexus-color-warning-soft)]",
         resolved: "bg-[var(--nexus-color-success-soft)] text-[var(--nexus-color-success)] ring-1 ring-[var(--nexus-color-success-soft)]",
     };
     const dots = {
         open: "bg-[var(--nexus-color-accent)]",
-        in_progress: "bg-[var(--nexus-color-warning)]",
         resolved: "bg-[var(--nexus-color-success)]",
     };
     return (

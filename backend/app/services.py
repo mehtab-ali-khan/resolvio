@@ -1,3 +1,5 @@
+# backend/app/services.py
+
 import logging
 from django.db import transaction
 from .ai.answering import answer_question
@@ -8,16 +10,31 @@ logger = logging.getLogger(__name__)
 
 
 def create_ticket_with_message(*, company, customer_name, customer_email, message):
+    """
+    Finds or creates the ONE ticket for this email within this company.
+    A visitor never ends up with two tickets just because they filled the
+    widget form again on a new device or after clearing their browser -
+    whatever they already have (open or resolved) is reused, so an agent
+    never sees the same person split across tickets.
+    """
     customer_name = customer_name.strip()
     customer_email = customer_email.strip()
     message = message.strip()
 
     with transaction.atomic():
-        ticket = Ticket.objects.create(
-            company=company,
-            customer_name=customer_name,
-            customer_email=customer_email,
+        ticket = (
+            Ticket.objects.filter(company=company, customer_email=customer_email)
+            .order_by("-created_at")
+            .first()
         )
+
+        if ticket is None:
+            ticket = Ticket.objects.create(
+                company=company,
+                customer_name=customer_name,
+                customer_email=customer_email,
+            )
+
         Message.objects.create(
             ticket=ticket,
             sender_type=Message.SenderType.CUSTOMER,
@@ -31,10 +48,12 @@ def create_ticket_with_message(*, company, customer_name, customer_email, messag
 
 def _attempt_ai_reply(*, ticket, question):
     """
-    Tries to have the AI answer the customer's first message. This must
-    never be allowed to break ticket creation - if anything here fails,
-    the ticket still exists and simply waits for a human agent, exactly
-    as if the AI feature didn't exist at all.
+    Tries to have the AI answer the customer's message. This runs on every
+    customer message, not just the first - so the AI can keep helping
+    through a whole conversation, not just greet once. It must never be
+    allowed to break ticket creation or message sending - if anything here
+    fails, the message still exists and simply waits for a human agent,
+    exactly as if the AI feature didn't exist at all.
     """
     try:
         outcome = answer_question(company=ticket.company, question=question)
@@ -63,11 +82,16 @@ def add_agent_reply(*, ticket, message):
 
 
 def add_customer_message(*, ticket, message):
-    return Message.objects.create(
+    message = message.strip()
+    created_message = Message.objects.create(
         ticket=ticket,
         sender_type=Message.SenderType.CUSTOMER,
-        body=message.strip(),
+        body=message,
     )
+
+    _attempt_ai_reply(ticket=ticket, question=message)
+
+    return created_message
 
 
 def create_knowledge_base_article(*, company, title, body):

@@ -243,15 +243,6 @@ export function ChatWidget({ apiKey }) {
     }
   }
 
-  function startNewTicket() {
-    localStorage.removeItem(STORAGE_KEY);
-    setAccessToken(null);
-    setMessages([]);
-    setNewMessage("");
-    setError("");
-    setForm(initialForm);
-    setUnread(0);
-  }
 
   // ─── Bubble (closed) ─────────────────────────────────────────────────────
 
@@ -418,12 +409,6 @@ export function ChatWidget({ apiKey }) {
             <span style={{ fontSize: "12px", color: "var(--nexus-color-success)", fontWeight: "600" }}>
               ✓ Ticket open
             </span>
-            <button
-              type="button" onClick={startNewTicket}
-              style={{ fontSize: "12px", color: "var(--nexus-color-success)", fontWeight: "600", background: "none", border: "none", cursor: "pointer", padding: 0 }}
-            >
-              New ticket
-            </button>
           </div>
 
           {/* Messages */}

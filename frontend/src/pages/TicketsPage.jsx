@@ -7,6 +7,13 @@ import { NewBadge, StatusBadge } from "../components/tickets/StatusBadge.jsx";
 import { TicketDetail } from "../components/tickets/TicketDetail.jsx";
 
 const LIST_POLL_INTERVAL_MS = 60000;
+const SEARCH_DEBOUNCE_MS = 400;
+
+const STATUS_FILTERS = [
+    { value: "all", label: "Default" },
+    { value: "open", label: "Open" },
+    { value: "resolved", label: "Resolved" },
+];
 
 function sortTickets(list) {
     return [...list].sort((a, b) => {
@@ -17,6 +24,9 @@ function sortTickets(list) {
 
 export function TicketsPage() {
     const [tickets, setTickets] = useState([]);
+    const [statusFilter, setStatusFilter] = useState("all");
+    const [search, setSearch] = useState("");
+    const [debouncedSearch, setDebouncedSearch] = useState("");
     const [page, setPage] = useState(1);
     const [hasMore, setHasMore] = useState(true);
     const [isLoadingMore, setIsLoadingMore] = useState(false);
@@ -24,13 +34,20 @@ export function TicketsPage() {
     const [error, setError] = useState("");
     const [isLoading, setIsLoading] = useState(true);
     const [isDetailLoading, setIsDetailLoading] = useState(false);
-    const [search, setSearch] = useState("");
 
-    async function loadTickets() {
+    // Wait until the agent pauses typing for SEARCH_DEBOUNCE_MS before
+    // actually triggering a backend search - avoids firing a request on
+    // every single keystroke.
+    useEffect(() => {
+        const timer = setTimeout(() => setDebouncedSearch(search.trim()), SEARCH_DEBOUNCE_MS);
+        return () => clearTimeout(timer);
+    }, [search]);
+
+    async function loadTickets(filter = statusFilter, searchTerm = debouncedSearch) {
         setError("");
         setIsLoading(true);
         try {
-            const data = await listTickets(1);
+            const data = await listTickets(1, filter, searchTerm);
             setTickets(data.results);
             setHasMore(Boolean(data.next));
             setPage(1);
@@ -46,7 +63,7 @@ export function TicketsPage() {
         setIsLoadingMore(true);
         try {
             const nextPage = page + 1;
-            const data = await listTickets(nextPage);
+            const data = await listTickets(nextPage, statusFilter, debouncedSearch);
             setTickets(prev => [...prev, ...data.results]);
             setHasMore(Boolean(data.next));
             setPage(nextPage);
@@ -87,25 +104,43 @@ export function TicketsPage() {
 
     function handleTicketStatusUpdated(ticketId, status) {
         setTickets(currentTickets =>
-            currentTickets.map(ticket => (ticket.id === ticketId ? { ...ticket, status } : ticket))
+            currentTickets
+                .map(ticket => (ticket.id === ticketId ? { ...ticket, status } : ticket))
+                .filter(ticket => statusFilter === "all" || ticket.status === statusFilter)
         );
         setSelectedTicket(currentTicket =>
             currentTicket?.id === ticketId ? { ...currentTicket, status } : currentTicket
         );
     }
 
+    function handleFilterChange(nextFilter) {
+        setStatusFilter(nextFilter);
+        setSelectedTicket(null);
+        loadTickets(nextFilter, debouncedSearch);
+    }
+
+    // Initial load
     useEffect(() => { loadTickets(); }, []);
+
+    // Re-search whenever the debounced search term actually changes
+    useEffect(() => {
+        setSelectedTicket(null);
+        loadTickets(statusFilter, debouncedSearch);
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [debouncedSearch]);
 
     useEffect(() => {
         const interval = setInterval(async () => {
             try {
-                const data = await listTickets(1);
+                const data = await listTickets(1, statusFilter, debouncedSearch);
                 setTickets(prevTickets => {
                     const freshById = new Map(data.results.map(t => [t.id, t]));
-                    const existingIds = new Set(prevTickets.map(t => t.id));
-                    const brandNew = data.results.filter(t => !existingIds.has(t.id));
-                    const updatedExisting = prevTickets.map(t => freshById.get(t.id) ?? t);
-                    return sortTickets([...brandNew, ...updatedExisting]);
+                    const freshIds = new Set(data.results.map(t => t.id));
+                    const brandNew = data.results.filter(t => !prevTickets.some(p => p.id === t.id));
+                    const stillVisible = prevTickets
+                        .filter(t => freshIds.has(t.id))
+                        .map(t => freshById.get(t.id) ?? t);
+                    return sortTickets([...brandNew, ...stillVisible]);
                 });
             } catch {
                 // silent fail on background poll — don't disrupt the agent
@@ -113,16 +148,7 @@ export function TicketsPage() {
         }, LIST_POLL_INTERVAL_MS);
 
         return () => clearInterval(interval);
-    }, []);
-
-    // const openCount = tickets.filter(t => t.status === "open").length;
-    // const inProgressCount = tickets.filter(t => t.status === "in_progress").length;
-    // const resolvedCount = tickets.filter(t => t.status === "resolved").length;
-
-    const filtered = tickets.filter(t =>
-        t.customer_name?.toLowerCase().includes(search.toLowerCase()) ||
-        t.customer_email?.toLowerCase().includes(search.toLowerCase())
-    );
+    }, [statusFilter, debouncedSearch]);
 
     return (
         <div className="max-w-screen-xl mx-auto px-4 sm:px-6 py-7">
@@ -133,7 +159,7 @@ export function TicketsPage() {
                     <p className="text-sm text-[var(--nexus-color-muted)] mt-0.5">Review complaints and reply from only one place.</p>
                 </div>
                 <button
-                    onClick={loadTickets}
+                    onClick={() => loadTickets()}
                     disabled={isLoading}
                     className="flex items-center gap-2 px-4 py-2 rounded-[var(--nexus-radius-md)] border border-[var(--nexus-color-border)] bg-[var(--nexus-color-surface)] text-[var(--nexus-color-secondary)] text-sm font-semibold shadow-[var(--nexus-shadow-sm)] hover:bg-[var(--nexus-color-surface-muted)] transition disabled:opacity-60 disabled:cursor-wait"
                 >
@@ -144,13 +170,6 @@ export function TicketsPage() {
                     {isLoading ? "Refreshing…" : "Refresh"}
                 </button>
             </div>
-
-            {/* <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-6">
-                <StatCard compact label="Total" value={tickets.length} accentClass="border-t-[var(--nexus-color-secondary)]" />
-                <StatCard compact label="Open" value={openCount} accentClass="border-t-[var(--nexus-color-accent)]" />
-                <StatCard compact label="In progress" value={inProgressCount} accentClass="border-t-[var(--nexus-color-warning)]" />
-                <StatCard compact label="Resolved" value={resolvedCount} accentClass="border-t-[var(--nexus-color-success)]" />
-            </div> */}
 
             {error && (
                 <div className="mb-5 px-4 py-3 rounded-[var(--nexus-radius-md)] bg-[var(--nexus-color-danger-soft)] border border-[var(--nexus-color-danger-soft)] text-[var(--nexus-color-danger)] text-sm">
@@ -169,7 +188,7 @@ export function TicketsPage() {
                         <input
                             value={search}
                             onChange={e => setSearch(e.target.value)}
-                            placeholder="Search by name or email…"
+                            placeholder="Search by name, email, or message…"
                             className="flex-1 text-sm text-[var(--nexus-color-text)] placeholder-[var(--nexus-color-subtle)] bg-transparent outline-none"
                         />
                         {search && (
@@ -177,12 +196,28 @@ export function TicketsPage() {
                         )}
                     </div>
 
-                    <div className="overflow-y-auto max-h-[calc(100vh-210px)]" onScroll={handleListScroll}>
+                    <div className="flex items-center gap-1 px-4 py-2.5 border-b border-[var(--nexus-color-border)] bg-[var(--nexus-color-surface)]">
+                        {STATUS_FILTERS.map(filter => (
+                            <button
+                                key={filter.value}
+                                type="button"
+                                onClick={() => handleFilterChange(filter.value)}
+                                className={`px-3 py-1.5 rounded-[var(--nexus-radius-md)] text-xs font-bold transition ${statusFilter === filter.value
+                                    ? "bg-[var(--nexus-color-primary-soft)] text-[var(--nexus-color-primary-strong)]"
+                                    : "text-[var(--nexus-color-secondary)] hover:bg-[var(--nexus-color-surface-muted)]"
+                                    }`}
+                            >
+                                {filter.label}
+                            </button>
+                        ))}
+                    </div>
+
+                    <div className="overflow-y-auto max-h-[calc(100vh-255px)]" onScroll={handleListScroll}>
                         {isLoading && (
                             <div className="py-10 text-center text-[var(--nexus-color-subtle)] text-sm">Loading tickets…</div>
                         )}
 
-                        {!isLoading && filtered.length === 0 && (
+                        {!isLoading && tickets.length === 0 && (
                             <EmptyState
                                 icon="📭"
                                 title={search ? "No matches" : "No tickets yet"}
@@ -190,7 +225,7 @@ export function TicketsPage() {
                             />
                         )}
 
-                        {!isLoading && filtered.map((ticket, i) => {
+                        {!isLoading && tickets.map((ticket, i) => {
                             const active = selectedTicket?.id === ticket.id;
                             return (
                                 <button
@@ -198,7 +233,7 @@ export function TicketsPage() {
                                     type="button"
                                     onClick={() => selectTicket(ticket.id)}
                                     className={`w-full text-left flex items-center gap-3 px-4 py-3.5 transition border-l-2
-                    ${i < filtered.length - 1 ? "border-b border-[var(--nexus-color-border)]" : ""}
+                    ${i < tickets.length - 1 ? "border-b border-[var(--nexus-color-border)]" : ""}
                     ${active ? "bg-[var(--nexus-color-primary-soft)] border-l-[var(--nexus-color-primary)]" : "hover:bg-[var(--nexus-color-surface-muted)] border-l-transparent"}
                   `}
                                 >
