@@ -30,6 +30,7 @@ INSTALLED_APPS = [
     "corsheaders",
     "rest_framework",
     "rest_framework.authtoken",
+    "channels",
     "app",
 ]
 
@@ -53,6 +54,28 @@ MIDDLEWARE = [
 # =================================
 ROOT_URLCONF = "core.urls"
 WSGI_APPLICATION = "core.wsgi.application"
+
+# =================================
+# CHANNELS
+# =================================
+ASGI_APPLICATION = "core.asgi.application"
+
+CHANNEL_LAYERS = {
+    "default": {
+        "BACKEND": "channels_redis.core.RedisChannelLayer",
+        "CONFIG": {
+            "hosts": [
+                {
+                    "address": f"redis://{os.environ.get('REDIS_HOST', 'redis')}:6379",
+                    "socket_timeout": None,
+                    "socket_connect_timeout": 5,
+                },
+            ],
+            "capacity": 1500,
+            "expiry": 60,
+        },
+    },
+}
 
 # =================================
 # TEMPLATES

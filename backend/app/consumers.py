@@ -1,0 +1,96 @@
+# backend/app/consumers.py
+
+import json
+from channels.generic.websocket import AsyncWebsocketConsumer
+
+
+class AgentConsumer(AsyncWebsocketConsumer):
+    """
+    Handles WebSocket connections from the agent dashboard.
+    Each agent joins a group named after their company ID, so when
+    anything happens in that company (new ticket, new message), all
+    connected agents for that company get notified at once.
+    """
+
+    async def connect(self):
+        user = self.scope.get("user")
+
+        # Reject the connection if no valid token was provided or the
+        # user has no company — they shouldn't be here.
+        if not user or not user.company_id:
+            await self.close()
+            return
+
+        self.company_group = f"company_{user.company_id}"
+
+        # Join this agent to their company's group on the shared
+        # whiteboard (Redis). From now on, any message sent to
+        # "company_X" group will arrive here instantly.
+        await self.channel_layer.group_add(
+            self.company_group,
+            self.channel_name,
+        )
+
+        await self.accept()
+
+    async def disconnect(self, close_code):
+        if hasattr(self, "company_group"):
+            await self.channel_layer.group_discard(
+                self.company_group,
+                self.channel_name,
+            )
+
+    # Called by channel_layer.group_send() from services.py when a
+    # new ticket or message arrives — this is what actually pushes
+    # the data to the agent's browser.
+    async def ticket_update(self, event):
+        await self.send(text_data=json.dumps(event["data"]))
+
+
+class WidgetConsumer(AsyncWebsocketConsumer):
+    """
+    Handles WebSocket connections from the customer chat widget.
+    Each widget connection joins a group named after its ticket ID,
+    so when an agent or AI replies to that specific ticket, only
+    that customer's widget gets the update.
+    """
+
+    async def connect(self):
+        access_token = self.scope["url_route"]["kwargs"]["access_token"]
+
+        # Import here (after django.setup()) to avoid circular imports
+        from .models import Ticket
+        from channels.db import database_sync_to_async
+
+        @database_sync_to_async
+        def get_ticket():
+            try:
+                return Ticket.objects.get(access_token=access_token)
+            except Ticket.DoesNotExist:
+                return None
+
+        ticket = await get_ticket()
+
+        if not ticket:
+            await self.close()
+            return
+
+        self.ticket_group = f"ticket_{ticket.id}"
+
+        await self.channel_layer.group_add(
+            self.ticket_group,
+            self.channel_name,
+        )
+
+        await self.accept()
+
+    async def disconnect(self, close_code):
+        if hasattr(self, "ticket_group"):
+            await self.channel_layer.group_discard(
+                self.ticket_group,
+                self.channel_name,
+            )
+
+    # Called when a new agent/AI message is saved to this ticket
+    async def new_message(self, event):
+        await self.send(text_data=json.dumps(event["data"]))

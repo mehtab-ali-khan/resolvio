@@ -1,3 +1,5 @@
+# docker-compose.yml
+
 services:
   backend:
     build: ./backend
@@ -5,11 +7,12 @@ services:
     restart: unless-stopped
     ports:
       - "8000:8000"
-    command: sh -c "python manage.py migrate && python manage.py runserver 0.0.0.0:8000"
+    command: sh -c "python manage.py migrate && daphne -b 0.0.0.0 -p 8000 core.asgi:application"
     volumes:
       - ./backend:/app
     depends_on:
       - db
+      - redis
 
   frontend:
     build: ./frontend
@@ -36,6 +39,12 @@ services:
       - postgres_data:/var/lib/postgresql/data
     ports:
       - "5432:5432"
+
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
 
 volumes:
   postgres_data:

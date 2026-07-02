@@ -17,11 +17,12 @@ services:
     image: nexus-support:latest
     env_file: ../.env
     restart: unless-stopped
-    command: sh -c "python manage.py collectstatic --noinput && gunicorn core.wsgi:application --bind 0.0.0.0:8000 --workers 3"
+    command: sh -c "python manage.py collectstatic --noinput && daphne -b 0.0.0.0 -p 8000 core.asgi:application"
     volumes:
       - static_volume:/app/staticfiles
     depends_on:
       - db
+      - redis
 
   db:
     image: pgvector/pgvector:pg16
@@ -29,6 +30,10 @@ services:
     restart: unless-stopped
     volumes:
       - postgres_data:/var/lib/postgresql/data
+
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
 
 volumes:
   postgres_data:

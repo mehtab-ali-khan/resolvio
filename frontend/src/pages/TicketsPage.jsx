@@ -1,19 +1,21 @@
 // frontend/src/pages/TicketsPage.jsx
 
-import { useEffect, useState } from "react";
-import { getTicketById, listTickets } from "../api/tickets.js";
+import { useCallback, useEffect, useState } from "react";
+import { getTicketById, getToken, listTickets } from "../api/tickets.js";
+import { useWebSocket } from "../hooks/useWebSocket.js";
 import { Avatar, EmptyState } from "../components/shared/ui.jsx";
 import { NewBadge, StatusBadge } from "../components/tickets/StatusBadge.jsx";
 import { TicketDetail } from "../components/tickets/TicketDetail.jsx";
 
-const LIST_POLL_INTERVAL_MS = 60000;
-const SEARCH_DEBOUNCE_MS = 400;
+const WS_BASE = import.meta.env.VITE_WS_URL || "ws://localhost:8000";
 
 const STATUS_FILTERS = [
     { value: "all", label: "Default" },
     { value: "open", label: "Open" },
     { value: "resolved", label: "Resolved" },
 ];
+
+const SEARCH_DEBOUNCE_MS = 400;
 
 function sortTickets(list) {
     return [...list].sort((a, b) => {
@@ -35,9 +37,13 @@ export function TicketsPage() {
     const [isLoading, setIsLoading] = useState(true);
     const [isDetailLoading, setIsDetailLoading] = useState(false);
 
-    // Wait until the agent pauses typing for SEARCH_DEBOUNCE_MS before
-    // actually triggering a backend search - avoids firing a request on
-    // every single keystroke.
+    // Build the WebSocket URL with the auth token in the query string.
+    // We can't use headers for WebSocket auth (browser limitation),
+    // so the token goes in the URL instead.
+    const token = getToken();
+    const wsUrl = token ? `${WS_BASE}/ws/agent/?token=${token}` : null;
+
+    // Debounce search input — wait until typing stops before searching
     useEffect(() => {
         const timer = setTimeout(() => setDebouncedSearch(search.trim()), SEARCH_DEBOUNCE_MS);
         return () => clearTimeout(timer);
@@ -80,6 +86,50 @@ export function TicketsPage() {
         if (nearBottom) loadMoreTickets();
     }
 
+    // This is the function that runs every time the server pushes
+    // a real-time update through the WebSocket connection.
+    // useCallback means this function reference stays stable across
+    // renders, so the WebSocket hook doesn't unnecessarily reconnect.
+    const handleWebSocketMessage = useCallback((data) => {
+        if (data.type === "ticket_update") {
+            // A new ticket was created, or an existing ticket got
+            // a new message — reload the list to reflect the change.
+            // We reload rather than trying to patch the list manually
+            // because the new ticket needs to slot into the right
+            // position in the sorted, filtered, paginated list.
+            loadTickets();
+        }
+
+        if (data.type === "new_message") {
+            // A new message arrived on a specific ticket.
+            // Update that ticket in our list (flip is_new = true,
+            // update updated_at) so it bubbles up to the top.
+            setTickets(prev => sortTickets(prev.map(t =>
+                t.id === data.ticket_id
+                    ? { ...t, is_new: true, updated_at: new Date().toISOString() }
+                    : t
+            )));
+
+            // If the agent currently has this ticket open in the
+            // detail panel, also add the new message to that view
+            // so they see it appear instantly without closing and
+            // reopening the ticket.
+            setSelectedTicket(current => {
+                if (!current || current.id !== data.ticket_id) return current;
+                const alreadyExists = current.messages.some(m => m.id === data.message?.id);
+                if (alreadyExists) return current;
+                return {
+                    ...current,
+                    messages: [...current.messages, data.message],
+                };
+            });
+        }
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [statusFilter, debouncedSearch]);
+
+    // Connect the WebSocket — this replaces the old polling interval entirely.
+    useWebSocket(wsUrl, handleWebSocketMessage);
+
     function handleMessageSent(ticketId, message) {
         setSelectedTicket(current =>
             current?.id === ticketId
@@ -94,7 +144,9 @@ export function TicketsPage() {
         try {
             const detail = await getTicketById(id);
             setSelectedTicket(detail);
-            setTickets(prev => sortTickets(prev.map(t => (t.id === id ? { ...t, is_new: false } : t))));
+            setTickets(prev => sortTickets(prev.map(t =>
+                t.id === id ? { ...t, is_new: false } : t
+            )));
         } catch (e) {
             setError(e.message);
         } finally {
@@ -119,36 +171,13 @@ export function TicketsPage() {
         loadTickets(nextFilter, debouncedSearch);
     }
 
-    // Initial load
     useEffect(() => { loadTickets(); }, []);
 
-    // Re-search whenever the debounced search term actually changes
     useEffect(() => {
         setSelectedTicket(null);
         loadTickets(statusFilter, debouncedSearch);
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [debouncedSearch]);
-
-    useEffect(() => {
-        const interval = setInterval(async () => {
-            try {
-                const data = await listTickets(1, statusFilter, debouncedSearch);
-                setTickets(prevTickets => {
-                    const freshById = new Map(data.results.map(t => [t.id, t]));
-                    const freshIds = new Set(data.results.map(t => t.id));
-                    const brandNew = data.results.filter(t => !prevTickets.some(p => p.id === t.id));
-                    const stillVisible = prevTickets
-                        .filter(t => freshIds.has(t.id))
-                        .map(t => freshById.get(t.id) ?? t);
-                    return sortTickets([...brandNew, ...stillVisible]);
-                });
-            } catch {
-                // silent fail on background poll — don't disrupt the agent
-            }
-        }, LIST_POLL_INTERVAL_MS);
-
-        return () => clearInterval(interval);
-    }, [statusFilter, debouncedSearch]);
 
     return (
         <div className="max-w-screen-xl mx-auto px-4 sm:px-6 py-7">
@@ -216,7 +245,6 @@ export function TicketsPage() {
                         {isLoading && (
                             <div className="py-10 text-center text-[var(--nexus-color-subtle)] text-sm">Loading tickets…</div>
                         )}
-
                         {!isLoading && tickets.length === 0 && (
                             <EmptyState
                                 icon="📭"
@@ -224,7 +252,6 @@ export function TicketsPage() {
                                 body={search ? "Try a different search term." : "Tickets submitted via the widget will appear here."}
                             />
                         )}
-
                         {!isLoading && tickets.map((ticket, i) => {
                             const active = selectedTicket?.id === ticket.id;
                             return (
@@ -233,9 +260,9 @@ export function TicketsPage() {
                                     type="button"
                                     onClick={() => selectTicket(ticket.id)}
                                     className={`w-full text-left flex items-center gap-3 px-4 py-3.5 transition border-l-2
-                    ${i < tickets.length - 1 ? "border-b border-[var(--nexus-color-border)]" : ""}
-                    ${active ? "bg-[var(--nexus-color-primary-soft)] border-l-[var(--nexus-color-primary)]" : "hover:bg-[var(--nexus-color-surface-muted)] border-l-transparent"}
-                  `}
+                                        ${i < tickets.length - 1 ? "border-b border-[var(--nexus-color-border)]" : ""}
+                                        ${active ? "bg-[var(--nexus-color-primary-soft)] border-l-[var(--nexus-color-primary)]" : "hover:bg-[var(--nexus-color-surface-muted)] border-l-transparent"}
+                                    `}
                                 >
                                     <Avatar name={ticket.customer_name} />
                                     <div className="flex-1 min-w-0">
@@ -269,7 +296,6 @@ export function TicketsPage() {
                         onClose={() => setSelectedTicket(null)}
                     />
                 )}
-
             </div>
         </div>
     );

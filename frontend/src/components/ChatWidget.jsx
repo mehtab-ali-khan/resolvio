@@ -2,9 +2,9 @@
 
 import { useEffect, useRef, useState } from "react";
 import { createCustomerMessage, createTicket, getTicketByToken } from "../api/tickets.js";
+import { useWebSocket } from "../hooks/useWebSocket.js";
 
 const STORAGE_KEY = "nexus_ticket_token";
-const POLL_INTERVAL_MS = 60000;
 
 const styles = `
   #nexus-support-widget-root {
@@ -143,6 +143,29 @@ export function ChatWidget({ apiKey }) {
   const [unread, setUnread] = useState(0);
   const messagesEndRef = useRef(null);
 
+
+  const WS_BASE = import.meta.env.VITE_WS_URL || "ws://localhost:8000";
+  const wsUrl = accessToken ? `${WS_BASE}/ws/widget/${accessToken}/` : null;
+
+
+  useWebSocket(wsUrl, (data) => {
+    if (data.type === "new_message" && data.message) {
+      setMessages(prev => {
+        // Don't add duplicates — if the message is already in
+        // our list (e.g. from the optimistic update when the
+        // customer sent it), don't add it again.
+        const alreadyExists = prev.some(m => m.id === data.message.id);
+        if (alreadyExists) return prev;
+
+        const newCount = 1;
+        if (!isOpen || isMinimized) {
+          setUnread(u => u + newCount);
+        }
+        return [...prev, data.message];
+      });
+    }
+  });
+
   // Load existing ticket on mount
   useEffect(() => {
     injectGlobalStyles();
@@ -166,34 +189,7 @@ export function ChatWidget({ apiKey }) {
     if (isOpen && !isMinimized) setUnread(0);
   }, [isOpen, isMinimized]);
 
-  // Poll for new messages while a ticket exists — runs regardless of open/closed
-  // so the unread badge stays accurate even when the widget is collapsed.
-  useEffect(() => {
-    if (!accessToken) return;
 
-    function poll() {
-      // if (document.hidden) return; // skip while browser tab isn't visible
-
-      getTicketByToken(accessToken)
-        .then(ticket => {
-          setMessages(prev => {
-            if (ticket.messages.length === prev.length) return prev;
-
-            const newCount = ticket.messages.length - prev.length;
-            if (newCount > 0 && (!isOpen || isMinimized)) {
-              setUnread(u => u + newCount);
-            }
-            return ticket.messages;
-          });
-        })
-        .catch(() => {
-          // silent fail — don't disrupt the user for a background check
-        });
-    }
-
-    const interval = setInterval(poll, POLL_INTERVAL_MS);
-    return () => clearInterval(interval);
-  }, [accessToken, isOpen, isMinimized]);
 
   async function loadTicket(token) {
     setIsLoadingTicket(true);
