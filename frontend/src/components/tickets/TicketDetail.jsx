@@ -44,7 +44,7 @@ function MessageBubble({ msg, customerName }) {
     );
 }
 
-export function TicketDetail({ ticket, isLoading, onMessageSent, onStatusUpdated, onClose }) {
+export function TicketDetail({ ticket, isLoading, onStatusUpdated, onClose }) {
     const [reply, setReply] = useState("");
     const [error, setError] = useState("");
     const [isSubmitting, setIsSubmitting] = useState(false);
@@ -64,9 +64,11 @@ export function TicketDetail({ ticket, isLoading, onMessageSent, onStatusUpdated
         setError("");
         setIsSubmitting(true);
         try {
-            const message = await createAgentReply(ticket.id, { message: reply });
+            // Just send the reply to the server — don't add it to the
+            // screen here. The WebSocket push will add it automatically,
+            // which is the single source of truth for new messages.
+            await createAgentReply(ticket.id, { message: reply });
             setReply("");
-            onMessageSent(ticket.id, message);
         } catch (err) {
             setError(err.message);
         } finally {

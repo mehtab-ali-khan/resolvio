@@ -92,28 +92,36 @@ export function TicketsPage() {
     // renders, so the WebSocket hook doesn't unnecessarily reconnect.
     const handleWebSocketMessage = useCallback((data) => {
         if (data.type === "ticket_update") {
-            // A new ticket was created, or an existing ticket got
-            // a new message — reload the list to reflect the change.
-            // We reload rather than trying to patch the list manually
-            // because the new ticket needs to slot into the right
-            // position in the sorted, filtered, paginated list.
             loadTickets();
         }
 
         if (data.type === "new_message") {
-            // A new message arrived on a specific ticket.
-            // Update that ticket in our list (flip is_new = true,
-            // update updated_at) so it bubbles up to the top.
+            const isCurrentlyOpen = selectedTicket?.id === data.ticket_id;
+
             setTickets(prev => sortTickets(prev.map(t =>
                 t.id === data.ticket_id
-                    ? { ...t, is_new: true, updated_at: new Date().toISOString() }
+                    ? {
+                        ...t,
+                        // Only mark as new if the agent does NOT currently
+                        // have this ticket open. If they're already looking
+                        // at it, the message is already visible to them —
+                        // no need to badge it.
+                        is_new: isCurrentlyOpen ? false : true,
+                        updated_at: new Date().toISOString()
+                    }
                     : t
             )));
 
-            // If the agent currently has this ticket open in the
-            // detail panel, also add the new message to that view
-            // so they see it appear instantly without closing and
-            // reopening the ticket.
+            // If this ticket IS currently open, also tell the backend to
+            // clear is_new in the database — so if the agent refreshes or
+            // another agent loads this ticket, it won't show as unread.
+            if (isCurrentlyOpen) {
+                getTicketById(data.ticket_id).catch(() => {
+                    // silent fail — this is just a "mark as read" call,
+                    // not critical if it doesn't work
+                });
+            }
+
             setSelectedTicket(current => {
                 if (!current || current.id !== data.ticket_id) return current;
                 const alreadyExists = current.messages.some(m => m.id === data.message?.id);
@@ -125,18 +133,10 @@ export function TicketsPage() {
             });
         }
         // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [statusFilter, debouncedSearch]);
+    }, [statusFilter, debouncedSearch, selectedTicket]);
 
     // Connect the WebSocket — this replaces the old polling interval entirely.
     useWebSocket(wsUrl, handleWebSocketMessage);
-
-    function handleMessageSent(ticketId, message) {
-        setSelectedTicket(current =>
-            current?.id === ticketId
-                ? { ...current, messages: [...current.messages, message] }
-                : current
-        );
-    }
 
     async function selectTicket(id) {
         setError("");
@@ -291,7 +291,6 @@ export function TicketsPage() {
                     <TicketDetail
                         ticket={selectedTicket}
                         isLoading={isDetailLoading}
-                        onMessageSent={handleMessageSent}
                         onStatusUpdated={handleTicketStatusUpdated}
                         onClose={() => setSelectedTicket(null)}
                     />

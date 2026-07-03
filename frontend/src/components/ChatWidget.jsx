@@ -215,7 +215,12 @@ export function ChatWidget({ apiKey }) {
       const token = created.access_token;
       localStorage.setItem(STORAGE_KEY, token);
       setAccessToken(token);
-      setMessages([{ body: form.message, sender_type: "customer" }]);
+
+      // Fetch the full ticket immediately after creation so we get
+      // messages in the correct order — customer question first,
+      // then whatever the AI already replied with.
+      const ticket = await getTicketByToken(token);
+      setMessages(ticket.messages);
       setForm(initialForm);
     } catch (err) {
       setError(err.message);
@@ -229,9 +234,13 @@ export function ChatWidget({ apiKey }) {
     setError("");
     setIsSubmitting(true);
     try {
-      const created = await createCustomerMessage(accessToken, { message: newMessage });
-      setMessages(prev => [...prev, created]);
+      await createCustomerMessage(accessToken, { message: newMessage });
       setNewMessage("");
+
+      // Same here — fetch fresh messages after sending so order
+      // is always correct, regardless of when WebSocket pushes arrive.
+      const ticket = await getTicketByToken(accessToken);
+      setMessages(ticket.messages);
     } catch (err) {
       setError(err.message);
     } finally {
