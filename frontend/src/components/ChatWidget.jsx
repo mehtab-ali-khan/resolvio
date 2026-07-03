@@ -56,10 +56,18 @@ const styles = `
     0%, 80%, 100% { transform: translateY(0); }
     40%           { transform: translateY(-6px); }
   }
-  #nexus-support-widget-root * { box-sizing: border-box; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; }
-  .nexus-widget-open { animation: nexus-slide-up 0.3s cubic-bezier(0.34,1.56,0.64,1) forwards; }
-  .nexus-bubble { animation: nexus-bounce-in 0.4s cubic-bezier(0.34,1.56,0.64,1) forwards; }
-  .nexus-message { animation: nexus-message-in 0.25s ease forwards; }
+  @keyframes nexus-expand {
+    from { opacity: 0.8; transform: scaleX(0.97); }
+    to   { opacity: 1; transform: scaleX(1); }
+  }
+  #nexus-support-widget-root * {
+    box-sizing: border-box;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  }
+  .nexus-minimized  { animation: nexus-slide-up 0.3s cubic-bezier(0.34,1.56,0.64,1) forwards; }
+  .nexus-maximized  { animation: nexus-expand 0.25s ease forwards; }
+  .nexus-bubble     { animation: nexus-bounce-in 0.4s cubic-bezier(0.34,1.56,0.64,1) forwards; }
+  .nexus-message    { animation: nexus-message-in 0.25s ease forwards; }
   .nexus-dot { display:inline-block; width:6px; height:6px; border-radius:50%; background:var(--nexus-color-subtle); animation:nexus-dot-bounce 1.2s ease infinite; }
   .nexus-dot:nth-child(2) { animation-delay:0.2s; }
   .nexus-dot:nth-child(3) { animation-delay:0.4s; }
@@ -73,9 +81,6 @@ function injectGlobalStyles() {
   document.head.appendChild(tag);
 }
 
-// A message is "from the business" whether a human agent or the AI wrote
-// it - both render on the left, in the support color. Only the customer's
-// own messages render on the right.
 function isFromTeam(senderType) {
   return senderType === "agent" || senderType === "ai";
 }
@@ -88,12 +93,11 @@ function senderLabel(senderType) {
 
 const initialForm = { customer_name: "", customer_email: "", message: "" };
 
-// ─── Shared style tokens ──────────────────────────────────────────────────────
-
 const headerBtnStyle = {
   width: "28px", height: "28px", borderRadius: "8px", border: "none",
   background: "var(--nexus-color-header-pill)", color: "var(--nexus-color-inverse)",
   cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center",
+  flexShrink: 0,
 };
 
 const inputStyle = {
@@ -128,11 +132,13 @@ function ErrorBox({ message }) {
   );
 }
 
-// ─── Main widget ──────────────────────────────────────────────────────────────
+// ─── The 3 possible states ────────────────────────────────────────────────────
+// "closed"    → only the bubble button shows in the corner
+// "minimized" → small floating card in the bottom right (normal chat view)
+// "maximized" → full height panel pinned to the right side of the screen
 
 export function ChatWidget({ apiKey }) {
-  const [isOpen, setIsOpen] = useState(false);
-  const [isMinimized, setIsMinimized] = useState(false);
+  const [chatState, setChatState] = useState("closed");
   const [isLoadingTicket, setIsLoadingTicket] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [form, setForm] = useState(initialForm);
@@ -143,30 +149,23 @@ export function ChatWidget({ apiKey }) {
   const [unread, setUnread] = useState(0);
   const messagesEndRef = useRef(null);
 
-
   const WS_BASE = import.meta.env.VITE_WS_URL || "ws://localhost:8000";
   const wsUrl = accessToken ? `${WS_BASE}/ws/widget/${accessToken}/` : null;
-
 
   useWebSocket(wsUrl, (data) => {
     if (data.type === "new_message" && data.message) {
       setMessages(prev => {
-        // Don't add duplicates — if the message is already in
-        // our list (e.g. from the optimistic update when the
-        // customer sent it), don't add it again.
         const alreadyExists = prev.some(m => m.id === data.message.id);
         if (alreadyExists) return prev;
-
-        const newCount = 1;
-        if (!isOpen || isMinimized) {
-          setUnread(u => u + newCount);
+        // Only increment unread badge when chat is fully closed
+        if (chatState === "closed") {
+          setUnread(u => u + 1);
         }
         return [...prev, data.message];
       });
     }
   });
 
-  // Load existing ticket on mount
   useEffect(() => {
     injectGlobalStyles();
     const saved = localStorage.getItem(STORAGE_KEY);
@@ -177,19 +176,17 @@ export function ChatWidget({ apiKey }) {
     }
   }, []);
 
-  // Auto-scroll to latest message
+  // Auto-scroll to latest message whenever messages change
   useEffect(() => {
-    if (isOpen && !isMinimized) {
+    if (chatState !== "closed") {
       messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
     }
-  }, [messages, isOpen, isMinimized]);
+  }, [messages, chatState]);
 
-  // Clear unread badge when widget is opened and visible
+  // Clear unread badge whenever the chat is opened in any state
   useEffect(() => {
-    if (isOpen && !isMinimized) setUnread(0);
-  }, [isOpen, isMinimized]);
-
-
+    if (chatState !== "closed") setUnread(0);
+  }, [chatState]);
 
   async function loadTicket(token) {
     setIsLoadingTicket(true);
@@ -215,10 +212,6 @@ export function ChatWidget({ apiKey }) {
       const token = created.access_token;
       localStorage.setItem(STORAGE_KEY, token);
       setAccessToken(token);
-
-      // Fetch the full ticket immediately after creation so we get
-      // messages in the correct order — customer question first,
-      // then whatever the AI already replied with.
       const ticket = await getTicketByToken(token);
       setMessages(ticket.messages);
       setForm(initialForm);
@@ -236,9 +229,6 @@ export function ChatWidget({ apiKey }) {
     try {
       await createCustomerMessage(accessToken, { message: newMessage });
       setNewMessage("");
-
-      // Same here — fetch fresh messages after sending so order
-      // is always correct, regardless of when WebSocket pushes arrive.
       const ticket = await getTicketByToken(accessToken);
       setMessages(ticket.messages);
     } catch (err) {
@@ -248,20 +238,20 @@ export function ChatWidget({ apiKey }) {
     }
   }
 
+  // ─── State 1: Closed — just the bubble ───────────────────────────────────
 
-  // ─── Bubble (closed) ─────────────────────────────────────────────────────
-
-  if (!isOpen) {
+  if (chatState === "closed") {
     return (
       <button
         className="nexus-bubble"
         type="button"
-        onClick={() => { setIsOpen(true); setIsMinimized(false); }}
+        onClick={() => setChatState("minimized")}
         style={{
           position: "fixed", bottom: "24px", right: "24px",
           width: "60px", height: "60px", borderRadius: "50%",
-          background: "var(--nexus-gradient-brand)", border: "none", cursor: "pointer",
-          display: "flex", alignItems: "center", justifyContent: "center",
+          background: "var(--nexus-gradient-brand)", border: "none",
+          cursor: "pointer", display: "flex", alignItems: "center",
+          justifyContent: "center",
           boxShadow: "0 8px 32px rgba(47,111,237,0.34)", zIndex: 999999,
         }}
         aria-label="Open support chat"
@@ -270,6 +260,7 @@ export function ChatWidget({ apiKey }) {
           <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" fill="white" />
         </svg>
 
+        {/* Unread badge — only shows when there are unread messages */}
         {unread > 0 && (
           <span style={{
             position: "absolute", top: "-4px", right: "-4px",
@@ -277,7 +268,7 @@ export function ChatWidget({ apiKey }) {
             background: "var(--nexus-color-danger)", color: "white",
             fontSize: "11px", fontWeight: "700",
             display: "flex", alignItems: "center", justifyContent: "center",
-            border: "2px solid var(--nexus-color-surface)",
+            border: "2px solid white",
           }}>
             {unread}
           </span>
@@ -286,82 +277,111 @@ export function ChatWidget({ apiKey }) {
     );
   }
 
-  // ─── Window (open) ───────────────────────────────────────────────────────
+  // ─── Header — shared between minimized and maximized states ──────────────
 
-  return (
-    <div
-      id="nexus-support-widget-root"
-      className="nexus-widget-open"
-      style={{
-        position: "fixed", bottom: "24px", right: "24px",
-        width: "min(380px, calc(100vw - 32px))", borderRadius: "20px",
-        background: "var(--nexus-color-surface)",
-        boxShadow: "var(--nexus-shadow-lg)", overflow: "hidden",
-        zIndex: 999999, border: "1px solid var(--nexus-color-border)",
-      }}
-    >
-      {/* Header */}
-      <div style={{
-        background: "var(--nexus-gradient-header)", padding: "14px 16px",
-        display: "flex", alignItems: "center", justifyContent: "space-between",
-        borderBottom: "1px solid var(--nexus-color-header-border)",
-      }}>
-        <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
-          <div style={{
-            width: "34px", height: "34px", borderRadius: "50%",
-            background: "rgba(255,255,255,0.2)", display: "flex",
-            alignItems: "center", justifyContent: "center",
-          }}>
-            <svg width="17" height="17" viewBox="0 0 24 24" fill="none">
-              <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" fill="white" />
-            </svg>
-          </div>
-          <div>
-            <p style={{ color: "var(--nexus-color-header-text)", fontWeight: "600", fontSize: "14px", margin: 0 }}>
-              Support
-            </p>
-            <p style={{ color: "var(--nexus-color-header-muted)", fontSize: "11px", margin: 0, display: "flex", alignItems: "center", gap: "4px" }}>
-              <span style={{ width: "6px", height: "6px", borderRadius: "50%", background: "var(--nexus-color-success)", display: "inline-block" }} />
-              Online · usually replies quickly
-            </p>
-          </div>
+  const header = (
+    <div style={{
+      background: "var(--nexus-gradient-header)",
+      padding: "14px 16px",
+      display: "flex",
+      alignItems: "center",
+      justifyContent: "space-between",
+      borderBottom: "1px solid var(--nexus-color-header-border)",
+      flexShrink: 0,
+    }}>
+      {/* Brand / title */}
+      <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+        <div style={{
+          width: "34px", height: "34px", borderRadius: "50%",
+          background: "rgba(255,255,255,0.2)",
+          display: "flex", alignItems: "center", justifyContent: "center",
+        }}>
+          <svg width="17" height="17" viewBox="0 0 24 24" fill="none">
+            <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" fill="white" />
+          </svg>
         </div>
-        <div style={{ display: "flex", gap: "4px" }}>
-          <button type="button" onClick={() => setIsMinimized(v => !v)} style={headerBtnStyle} aria-label="Minimize">
+        <p style={{
+          color: "var(--nexus-color-header-text)",
+          fontWeight: "600", fontSize: "14px", margin: 0,
+        }}>
+          Support
+        </p>
+      </div>
+
+      {/* Action buttons */}
+      <div style={{ display: "flex", gap: "4px" }}>
+
+        {/* Minimize button — only shown when maximized, shrinks back to small card */}
+        {chatState === "maximized" && (
+          <button
+            type="button"
+            onClick={() => setChatState("minimized")}
+            style={headerBtnStyle}
+            aria-label="Minimize to small chat"
+          >
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
               <line x1="5" y1="12" x2="19" y2="12" />
             </svg>
           </button>
-          <button type="button" onClick={() => setIsOpen(false)} style={headerBtnStyle} aria-label="Close">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-              <line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" />
+        )}
+
+        {/* Maximize button — only shown when minimized, expands to full height */}
+        {chatState === "minimized" && (
+          <button
+            type="button"
+            onClick={() => setChatState("maximized")}
+            style={headerBtnStyle}
+            aria-label="Expand to full height"
+          >
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+              <polyline points="15 3 21 3 21 9" />
+              <polyline points="9 21 3 21 3 15" />
+              <line x1="21" y1="3" x2="14" y2="10" />
+              <line x1="3" y1="21" x2="10" y2="14" />
             </svg>
           </button>
-        </div>
-      </div>
+        )}
 
-      {/* Minimized */}
-      {isMinimized && (
-        <div style={{ padding: "14px 18px" }}>
-          <p style={{ color: "var(--nexus-color-muted)", fontSize: "13px", margin: 0 }}>
-            Chat minimized. Click to continue.
+        {/* Close button — always shown, goes back to bubble */}
+        <button
+          type="button"
+          onClick={() => setChatState("closed")}
+          style={headerBtnStyle}
+          aria-label="Close chat"
+        >
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+            <line x1="18" y1="6" x2="6" y2="18" />
+            <line x1="6" y1="6" x2="18" y2="18" />
+          </svg>
+        </button>
+      </div>
+    </div>
+  );
+
+  // ─── Chat body — shared between minimized and maximized states ────────────
+
+  const body = (
+    <>
+      {/* Loading spinner */}
+      {isLoadingTicket && (
+        <div style={{ padding: "32px", textAlign: "center", flex: 1 }}>
+          <div style={{ display: "flex", gap: "6px", justifyContent: "center", marginBottom: "10px" }}>
+            <span className="nexus-dot" />
+            <span className="nexus-dot" />
+            <span className="nexus-dot" />
+          </div>
+          <p style={{ color: "var(--nexus-color-subtle)", fontSize: "13px", margin: 0 }}>
+            Loading…
           </p>
         </div>
       )}
 
-      {/* Loading */}
-      {!isMinimized && isLoadingTicket && (
-        <div style={{ padding: "32px", textAlign: "center" }}>
-          <div style={{ display: "flex", gap: "6px", justifyContent: "center", marginBottom: "10px" }}>
-            <span className="nexus-dot" /><span className="nexus-dot" /><span className="nexus-dot" />
-          </div>
-          <p style={{ color: "var(--nexus-color-subtle)", fontSize: "13px", margin: 0 }}>Loading…</p>
-        </div>
-      )}
-
-      {/* New ticket form */}
-      {!isMinimized && !isLoadingTicket && !accessToken && (
-        <form onSubmit={submitTicket} style={{ padding: "18px", display: "grid", gap: "12px" }}>
+      {/* New ticket form — shown when customer has no existing ticket */}
+      {!isLoadingTicket && !accessToken && (
+        <form
+          onSubmit={submitTicket}
+          style={{ padding: "18px", display: "grid", gap: "12px", flex: 1, overflowY: "auto" }}
+        >
           <p style={{ color: "var(--nexus-color-muted)", fontSize: "13px", margin: 0, lineHeight: 1.5 }}>
             Send us a message and we'll get back to you as soon as possible.
           </p>
@@ -373,7 +393,8 @@ export function ChatWidget({ apiKey }) {
             <div key={name} style={{ display: "grid", gap: "6px" }}>
               <label style={labelStyle}>{label}</label>
               <input
-                name={name} type={type} value={form[name]} placeholder={placeholder} required
+                name={name} type={type} value={form[name]}
+                placeholder={placeholder} required
                 onChange={e => setForm({ ...form, [e.target.name]: e.target.value })}
                 style={inputStyle}
                 onFocus={e => (e.target.style.borderColor = "var(--nexus-color-primary)")}
@@ -396,52 +417,73 @@ export function ChatWidget({ apiKey }) {
 
           {error && <ErrorBox message={error} />}
 
-          <button type="submit" disabled={isSubmitting} style={{ ...primaryBtnStyle, opacity: isSubmitting ? 0.7 : 1 }}>
+          <button
+            type="submit" disabled={isSubmitting}
+            style={{ ...primaryBtnStyle, opacity: isSubmitting ? 0.7 : 1 }}
+          >
             {isSubmitting ? "Sending…" : "Send message →"}
           </button>
         </form>
       )}
 
-      {/* Conversation */}
-      {!isMinimized && !isLoadingTicket && accessToken && (
-        <div>
-          {/* Ticket status bar */}
-          <div style={{
-            display: "flex", alignItems: "center", justifyContent: "space-between",
-            padding: "10px 18px", background: "var(--nexus-color-success-soft)",
-            borderBottom: "1px solid var(--nexus-color-success-soft)",
-          }}>
-            <span style={{ fontSize: "12px", color: "var(--nexus-color-success)", fontWeight: "600" }}>
-              ✓ Ticket open
-            </span>
-          </div>
+      {/* Conversation — shown when customer has an existing ticket */}
+      {!isLoadingTicket && accessToken && (
+        <div style={{ display: "flex", flexDirection: "column", flex: 1, overflow: "hidden" }}>
 
-          {/* Messages */}
-          <div style={{ padding: "14px 18px", maxHeight: "240px", overflowY: "auto", display: "grid", gap: "10px" }}>
+          {/* Messages list */}
+          <div style={{
+            padding: "14px 18px",
+            flex: 1,
+            overflowY: "auto",
+            display: "flex",
+            flexDirection: "column",
+            gap: "10px",
+          }}>
             {messages.length === 0 && (
-              <p style={{ color: "var(--nexus-color-subtle)", fontSize: "13px", textAlign: "center", margin: "16px 0" }}>
+              <p style={{
+                color: "var(--nexus-color-subtle)", fontSize: "13px",
+                textAlign: "center", margin: "16px 0",
+              }}>
                 No messages yet.
               </p>
             )}
+
             {messages.map((msg, i) => {
               const fromTeam = isFromTeam(msg.sender_type);
               return (
-                <div key={msg.id ?? i} className="nexus-message" style={{
-                  display: "flex", flexDirection: "column",
-                  alignItems: fromTeam ? "flex-start" : "flex-end", gap: "3px",
-                }}>
+                <div
+                  key={msg.id ?? i}
+                  className="nexus-message"
+                  style={{
+                    display: "flex", flexDirection: "column",
+                    alignItems: fromTeam ? "flex-start" : "flex-end",
+                    gap: "3px",
+                  }}
+                >
                   <span style={{
-                    fontSize: "10px", fontWeight: "700", textTransform: "uppercase", letterSpacing: "0.05em",
-                    color: fromTeam ? "var(--nexus-message-agent-label)" : "var(--nexus-message-customer-label)",
+                    fontSize: "10px", fontWeight: "700",
+                    textTransform: "uppercase", letterSpacing: "0.05em",
+                    color: fromTeam
+                      ? "var(--nexus-message-agent-label)"
+                      : "var(--nexus-message-customer-label)",
                   }}>
                     {senderLabel(msg.sender_type)}
                   </span>
                   <div style={{
-                    maxWidth: "85%", padding: "10px 13px", fontSize: "13px", lineHeight: 1.5,
-                    borderRadius: fromTeam ? "4px 16px 16px 16px" : "16px 4px 16px 16px",
-                    background: fromTeam ? "var(--nexus-message-agent-bg)" : "var(--nexus-message-customer-bg)",
-                    color: fromTeam ? "var(--nexus-message-agent-text)" : "var(--nexus-message-customer-text)",
-                    border: fromTeam ? "1px solid var(--nexus-color-primary-soft)" : "1px solid var(--nexus-message-customer-border)",
+                    maxWidth: "85%", padding: "10px 13px",
+                    fontSize: "13px", lineHeight: 1.5,
+                    borderRadius: fromTeam
+                      ? "4px 16px 16px 16px"
+                      : "16px 4px 16px 16px",
+                    background: fromTeam
+                      ? "var(--nexus-message-agent-bg)"
+                      : "var(--nexus-message-customer-bg)",
+                    color: fromTeam
+                      ? "var(--nexus-message-agent-text)"
+                      : "var(--nexus-message-customer-text)",
+                    border: fromTeam
+                      ? "1px solid var(--nexus-color-primary-soft)"
+                      : "1px solid var(--nexus-message-customer-border)",
                   }}>
                     {msg.body}
                   </div>
@@ -451,10 +493,20 @@ export function ChatWidget({ apiKey }) {
             <div ref={messagesEndRef} />
           </div>
 
-          {/* Reply */}
-          <div style={{ borderTop: "1px solid var(--nexus-color-border)", padding: "14px 18px", display: "grid", gap: "10px" }}>
+          {/* Reply box — always pinned to the bottom */}
+          <div style={{
+            borderTop: "1px solid var(--nexus-color-border)",
+            padding: "14px 18px",
+            display: "grid",
+            gap: "10px",
+            flexShrink: 0,
+            background: "var(--nexus-color-surface)",
+          }}>
             {error && <ErrorBox message={error} />}
-            <form onSubmit={submitMessage} style={{ display: "flex", gap: "8px", alignItems: "flex-end" }}>
+            <form
+              onSubmit={submitMessage}
+              style={{ display: "flex", gap: "8px", alignItems: "flex-end" }}
+            >
               <textarea
                 value={newMessage} required rows={2} placeholder="Reply…"
                 onChange={e => setNewMessage(e.target.value)}
@@ -466,19 +518,78 @@ export function ChatWidget({ apiKey }) {
                 type="submit" disabled={isSubmitting} aria-label="Send"
                 style={{
                   width: "38px", height: "38px", borderRadius: "10px", border: "none",
-                  background: isSubmitting ? "var(--nexus-color-subtle)" : "var(--nexus-gradient-brand)",
+                  background: isSubmitting
+                    ? "var(--nexus-color-subtle)"
+                    : "var(--nexus-gradient-brand)",
                   cursor: isSubmitting ? "wait" : "pointer",
-                  display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0,
+                  display: "flex", alignItems: "center",
+                  justifyContent: "center", flexShrink: 0,
                 }}
               >
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5">
-                  <line x1="22" y1="2" x2="11" y2="13" /><polygon points="22 2 15 22 11 13 2 9 22 2" />
+                  <line x1="22" y1="2" x2="11" y2="13" />
+                  <polygon points="22 2 15 22 11 13 2 9 22 2" />
                 </svg>
               </button>
             </form>
           </div>
         </div>
       )}
+    </>
+  );
+
+  // ─── State 2: Minimized — small floating card ─────────────────────────────
+
+  if (chatState === "minimized") {
+    return (
+      <div
+        id="nexus-support-widget-root"
+        className="nexus-minimized"
+        style={{
+          position: "fixed",
+          bottom: "24px",
+          right: "24px",
+          width: "min(380px, calc(100vw - 32px))",
+          height: "520px",        // fixed height for the small card
+          borderRadius: "20px",
+          background: "var(--nexus-color-surface)",
+          boxShadow: "var(--nexus-shadow-lg)",
+          border: "1px solid var(--nexus-color-border)",
+          zIndex: 999999,
+          display: "flex",
+          flexDirection: "column",
+          overflow: "hidden",
+        }}
+      >
+        {header}
+        {body}
+      </div>
+    );
+  }
+
+  // ─── State 3: Maximized — full height side panel ──────────────────────────
+
+  return (
+    <div
+      id="nexus-support-widget-root"
+      className="nexus-maximized"
+      style={{
+        position: "fixed",
+        top: 0,
+        right: 0,
+        bottom: 0,
+        width: "min(45%, 500px)",  // 45% of screen, max 500px
+        background: "var(--nexus-color-surface)",
+        boxShadow: "-8px 0 32px rgba(24,34,48,0.12)",
+        borderLeft: "1px solid var(--nexus-color-border)",
+        zIndex: 999999,
+        display: "flex",
+        flexDirection: "column",
+        overflow: "hidden",
+      }}
+    >
+      {header}
+      {body}
     </div>
   );
 }

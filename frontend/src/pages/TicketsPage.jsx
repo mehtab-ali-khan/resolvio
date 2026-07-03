@@ -249,7 +249,6 @@ export function TicketsPage() {
                             <EmptyState
                                 icon="📭"
                                 title={search ? "No matches" : "No tickets yet"}
-                                body={search ? "Try a different search term." : "Tickets submitted via the widget will appear here."}
                             />
                         )}
                         {!isLoading && tickets.map((ticket, i) => {
