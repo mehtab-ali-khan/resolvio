@@ -8,7 +8,7 @@ import { Login } from "./components/Login.jsx";
 import { Signup } from "./components/Signup.jsx";
 import { TicketsPage } from "./pages/TicketsPage.jsx";
 import { KnowledgeBasePage } from "./pages/KnowledgeBasePage.jsx";
-import { AnalyticsPage } from "./pages/AnalyticsPage.jsx";
+import { WidgetSetupPage } from "./pages/WidgetSetupPage.jsx";
 
 export default function App() {
   return (
@@ -24,7 +24,7 @@ export default function App() {
             <Route index element={<Navigate to="/tickets" replace />} />
             <Route path="/tickets" element={<TicketsPage />} />
             <Route path="/knowledge-base" element={<KnowledgeBasePage />} />
-            <Route path="/analytics" element={<AnalyticsPage />} />
+            <Route path="/widget-setup" element={<WidgetSetupPage />} />
           </Route>
         </Route>
 
