@@ -183,21 +183,9 @@ export function TicketsPage() {
         <div className="max-w-screen-xl mx-auto px-4 sm:px-6 py-7">
             <div className="flex flex-wrap items-start justify-between gap-4 mb-6">
                 <div>
-                    <p className="text-[11px] font-bold uppercase tracking-widest text-[var(--nexus-color-primary)] mb-1">Support Desk</p>
                     <h1 className="text-2xl font-bold text-[var(--nexus-color-text)] tracking-tight">Tickets</h1>
                     <p className="text-sm text-[var(--nexus-color-muted)] mt-0.5">Review complaints and reply from only one place.</p>
                 </div>
-                <button
-                    onClick={() => loadTickets()}
-                    disabled={isLoading}
-                    className="flex items-center gap-2 px-4 py-2 rounded-[var(--nexus-radius-md)] border border-[var(--nexus-color-border)] bg-[var(--nexus-color-surface)] text-[var(--nexus-color-secondary)] text-sm font-semibold shadow-[var(--nexus-shadow-sm)] hover:bg-[var(--nexus-color-surface-muted)] transition disabled:opacity-60 disabled:cursor-wait"
-                >
-                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" className={isLoading ? "animate-spin" : ""}>
-                        <polyline points="23 4 23 10 17 10" />
-                        <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10" />
-                    </svg>
-                    {isLoading ? "Refreshing…" : "Refresh"}
-                </button>
             </div>
 
             {error && (

@@ -14,7 +14,7 @@ function IndexStatusBadge({ status }) {
                 }`}
         >
             <span className={`w-1.5 h-1.5 rounded-full ${isReady ? "bg-[var(--nexus-color-success)]" : "bg-[var(--nexus-color-danger)]"}`} />
-            {isReady ? "Searchable" : "Failed"}
+            {isReady ? "Success" : "Failed"}
         </span>
     );
 }
@@ -71,11 +71,13 @@ export function KnowledgeBasePage() {
             if (selected === "new") {
                 const created = await createArticle(form);
                 setArticles(prev => [created, ...prev]);
+                closeForm();
             } else {
                 const updated = await updateArticle(selected.id, form);
                 setArticles(prev => prev.map(a => (a.id === updated.id ? updated : a)));
+                setSelected(updated);
+                setForm({ title: updated.title, body: updated.body });
             }
-            closeForm();
         } catch (err) {
             setFormError(err.message);
         } finally {
@@ -103,7 +105,6 @@ export function KnowledgeBasePage() {
 
             <div className="flex flex-wrap items-start justify-between gap-4 mb-6">
                 <div>
-                    <p className="text-[11px] font-bold uppercase tracking-widest text-[var(--nexus-color-primary)] mb-1">AI Layer</p>
                     <h1 className="text-2xl font-bold text-[var(--nexus-color-text)] tracking-tight">Knowledge Base</h1>
                     <p className="text-sm text-[var(--nexus-color-muted)] mt-0.5">Articles here are what the AI uses to answer customers automatically.</p>
                 </div>
@@ -165,8 +166,8 @@ export function KnowledgeBasePage() {
 
                         <form onSubmit={submitForm} className="p-5 flex flex-col gap-4">
                             {selected !== "new" && selected.index_status === "failed" && (
-                                <div className="px-3 py-2.5 rounded-[var(--nexus-radius-md)] bg-[var(--nexus-color-danger-soft)] border border-[var(--nexus-color-danger-soft)] text-[var(--nexus-color-danger)] text-xs">
-                                    ⚠️ Not searchable yet. {selected.index_error || "Saving again will retry."}
+                                <div className="px-3 py-2.5 rounded-[var(--nexus-radius-md)] bg-[var(--nexus-color-warning-soft)] border border-[var(--nexus-color-warning-soft)] text-[var(--nexus-color-warning)] text-xs">
+                                    ⚠️ {selected.index_error || "This article is saved but not yet searchable by the AI. Try saving again."}
                                 </div>
                             )}
 
