@@ -12,12 +12,12 @@ export const statusLabels = TICKET_STATUSES.reduce((labels, status) => {
 
 export function StatusBadge({ status }) {
     const styles = {
-        open: "bg-[var(--nexus-color-accent-soft)] text-[var(--nexus-color-accent-strong)] ring-1 ring-[var(--nexus-color-accent-soft)]",
-        resolved: "bg-[var(--nexus-color-success-soft)] text-[var(--nexus-color-success)] ring-1 ring-[var(--nexus-color-success-soft)]",
+        open: "bg-[var(--p-soft)] text-[var(--p)] ring-1 ring-[var(--p-soft)]",
+        resolved: "bg-[var(--s-soft)] text-[var(--s-mid)] ring-1 ring-[var(--g-300)]",
     };
     const dots = {
-        open: "bg-[var(--nexus-color-accent)]",
-        resolved: "bg-[var(--nexus-color-success)]",
+        open: "bg-[var(--p)]",
+        resolved: "bg-[var(--g-500)]",
     };
     return (
         <span className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-bold uppercase tracking-wider ${styles[status] ?? styles.open}`}>
@@ -29,7 +29,7 @@ export function StatusBadge({ status }) {
 
 export function NewBadge() {
     return (
-        <span className="text-[10px] font-bold uppercase px-1.5 py-0.5 rounded-full bg-[var(--nexus-color-danger)] text-white">
+        <span className="text-[10px] font-bold uppercase px-1.5 py-0.5 rounded-full bg-[var(--danger)] text-white">
             New
         </span>
     );

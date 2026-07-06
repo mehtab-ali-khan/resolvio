@@ -9,35 +9,47 @@ function MessageBubble({ msg, customerName }) {
     const isAgent = msg.sender_type === "agent";
     const isAi = msg.sender_type === "ai";
     const isInternalDraft = isAi && msg.is_internal;
-    const alignRight = isAgent || isAi;
+    const fromTeam = isAgent || isAi;
 
     const label = isAgent
         ? "You (agent)"
         : isAi
-            ? (isInternalDraft ? "AI draft (internal)" : "AI Assistant")
+            ? (isInternalDraft ? "AI draft — internal only" : "AI Assistant")
             : customerName;
 
-    const bubbleClass = isInternalDraft
-        ? "bg-[var(--nexus-color-warning-soft)] text-[var(--nexus-color-secondary-strong)] border border-dashed border-[var(--nexus-color-warning)] rounded-[var(--nexus-radius-lg)] rounded-tr-sm"
-        : alignRight
-            ? "bg-[var(--nexus-message-agent-bg)] text-[var(--nexus-message-agent-text)] rounded-[var(--nexus-radius-lg)] rounded-tr-sm border border-[var(--nexus-color-primary-soft)]"
-            : "bg-[var(--nexus-message-customer-bg)] text-[var(--nexus-message-customer-text)] rounded-[var(--nexus-radius-lg)] rounded-tl-sm border border-[var(--nexus-message-customer-border)]";
-
-    const labelClass = isInternalDraft
-        ? "text-[var(--nexus-color-warning)]"
-        : alignRight
-            ? "text-[var(--nexus-message-agent-label)]"
-            : "text-[var(--nexus-message-customer-label)]";
+    // Internal AI draft — dashed yellow border, agent eyes only
+    if (isInternalDraft) {
+        return (
+            <div className="flex flex-col items-end gap-1">
+                <span className="text-[10px] font-bold uppercase tracking-wider text-[var(--warning)] px-1">
+                    {label}{msg.ai_confidence != null ? ` · ${Math.round(msg.ai_confidence)}% confident` : ""}
+                </span>
+                <div className="max-w-[82%] px-4 py-3 text-sm leading-relaxed rounded-lg rounded-tr-sm border border-dashed border-[var(--warning)] bg-[var(--warning-soft)] text-[var(--s-mid)]">
+                    {msg.body}
+                </div>
+                <span className="text-[10px] text-[var(--g-500)] px-1">
+                    {new Date(msg.created_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+                </span>
+            </div>
+        );
+    }
 
     return (
-        <div className={`flex flex-col gap-1 ${alignRight ? "items-end" : "items-start"}`}>
-            <span className={`text-[10px] font-bold uppercase tracking-wider px-1 ${labelClass}`}>
-                {label}{isInternalDraft && msg.ai_confidence != null ? ` · ${Math.round(msg.ai_confidence)}% confident` : ""}
+        <div className={`flex flex-col gap-1 ${fromTeam ? "items-end" : "items-start"}`}>
+            <span className={`text-[10px] font-bold uppercase tracking-wider px-1 ${fromTeam ? "text-[var(--p)]" : "text-[var(--g-600)]"}`}>
+                {label}
             </span>
-            <div className={`max-w-[82%] px-4 py-3 text-sm leading-relaxed shadow-[var(--nexus-shadow-sm)] ${bubbleClass}`}>
+            <div className={`max-w-[82%] px-4 py-3 text-sm leading-relaxed
+                ${fromTeam
+                    // Agent/AI — white bubble with blue border, same as chat widget
+                    ? "bg-white border border-[var(--g-300)] rounded-lg rounded-tr-sm shadow-[var(--shadow-sm)]"
+                    // Customer — light grey bubble, same as chat widget
+                    : "bg-[var(--g-200)] rounded-lg rounded-tl-sm text-[var(--s)]"
+                }`}
+            >
                 {msg.body}
             </div>
-            <span className="text-[10px] text-[var(--nexus-color-subtle)] px-1">
+            <span className="text-[10px] text-[var(--g-500)] px-1">
                 {new Date(msg.created_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
             </span>
         </div>
@@ -51,29 +63,42 @@ export function TicketDetail({ ticket, isLoading, onStatusUpdated, onClose }) {
     const [isStatusSubmitting, setIsStatusSubmitting] = useState(false);
     const [isStatusMenuOpen, setIsStatusMenuOpen] = useState(false);
     const messagesContainerRef = useRef(null);
+    const textareaRef = useRef(null);
 
     useEffect(() => {
         const container = messagesContainerRef.current;
-        if (container) {
-            container.scrollTop = container.scrollHeight;
-        }
+        if (container) container.scrollTop = container.scrollHeight;
     }, [ticket?.id, ticket?.messages?.length]);
 
     async function submitReply(e) {
         e.preventDefault();
+        if (!reply.trim()) return;
         setError("");
         setIsSubmitting(true);
         try {
-            // Just send the reply to the server — don't add it to the
-            // screen here. The WebSocket push will add it automatically,
-            // which is the single source of truth for new messages.
             await createAgentReply(ticket.id, { message: reply });
             setReply("");
+            if (textareaRef.current) textareaRef.current.style.height = "auto";
         } catch (err) {
             setError(err.message);
         } finally {
             setIsSubmitting(false);
         }
+    }
+
+    // Send on Enter, new line on Shift+Enter — same as chat widget
+    function handleKeyDown(e) {
+        if (e.key === "Enter" && !e.shiftKey) {
+            e.preventDefault();
+            submitReply(e);
+        }
+    }
+
+    function handleTextareaInput(e) {
+        setReply(e.target.value);
+        const ta = e.target;
+        ta.style.height = "auto";
+        ta.style.height = Math.min(ta.scrollHeight, 120) + "px";
     }
 
     async function changeStatus(nextStatus) {
@@ -84,8 +109,8 @@ export function TicketDetail({ ticket, isLoading, onStatusUpdated, onClose }) {
         setError("");
         setIsStatusSubmitting(true);
         try {
-            const updatedTicket = await updateTicketStatus(ticket.id, nextStatus);
-            onStatusUpdated(ticket.id, updatedTicket.status);
+            const updated = await updateTicketStatus(ticket.id, nextStatus);
+            onStatusUpdated(ticket.id, updated.status);
             setIsStatusMenuOpen(false);
         } catch (err) {
             setError(err.message);
@@ -96,7 +121,7 @@ export function TicketDetail({ ticket, isLoading, onStatusUpdated, onClose }) {
 
     if (isLoading) {
         return (
-            <div className="bg-[var(--nexus-color-surface)] rounded-[var(--nexus-radius-xl)] border border-[var(--nexus-color-border)] shadow-[var(--nexus-shadow-sm)] overflow-hidden">
+            <div className="bg-white rounded-[var(--radius-xl)] border border-[var(--g-300)] shadow-[var(--shadow-sm)] overflow-hidden">
                 <EmptyState icon="⏳" title="Loading conversation…" body="Please wait." />
             </div>
         );
@@ -105,72 +130,84 @@ export function TicketDetail({ ticket, isLoading, onStatusUpdated, onClose }) {
     if (!ticket) return null;
 
     return (
-        <div className="bg-[var(--nexus-color-surface)] rounded-[var(--nexus-radius-xl)] border border-[var(--nexus-color-border)] shadow-[var(--nexus-shadow-sm)] overflow-hidden flex flex-col h-full">
+        <div className="bg-white rounded-[var(--radius-xl)] border border-[var(--g-300)] shadow-[var(--shadow-sm)] flex flex-col overflow-hidden">
 
-            <div className="flex items-center gap-3 px-5 py-4 border-b border-[var(--nexus-color-border)] bg-[var(--nexus-color-surface-muted)]">
-                <Avatar name={ticket.customer_name} size="lg" />
+            {/* ── Header ── */}
+            <div className="flex items-center gap-3 px-5 py-3.5 border-b border-[var(--g-300)] bg-[var(--g-100)]">
+                <Avatar name={ticket.customer_name} size="md" />
+
+                {/* Name + email */}
                 <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2 mb-0.5">
-                        <h2 className="font-bold text-[var(--nexus-color-text)] text-[15px] truncate">{ticket.customer_name}</h2>
-                        <StatusBadge status={ticket.status} />
-                    </div>
-                    <p className="text-xs text-[var(--nexus-color-muted)] truncate">{ticket.customer_email} · Ticket #{ticket.id}</p>
+                    <p className="font-semibold text-[var(--s)] text-sm truncate">
+                        {ticket.customer_name}
+                    </p>
+                    <p className="text-xs text-[var(--g-600)] truncate">
+                        {ticket.customer_email}
+                    </p>
                 </div>
+
+                {/* Status dropdown — shows current status as the button label */}
                 <div
                     className="relative flex-shrink-0"
-                    onBlur={event => {
-                        if (!event.currentTarget.contains(event.relatedTarget)) {
+                    onBlur={e => {
+                        if (!e.currentTarget.contains(e.relatedTarget)) {
                             setIsStatusMenuOpen(false);
                         }
                     }}
                 >
-                    <label className="sr-only" htmlFor={`ticket-status-${ticket.id}`}>Ticket status</label>
                     <button
-                        id={`ticket-status-${ticket.id}`}
                         type="button"
-                        onClick={() => setIsStatusMenuOpen(open => !open)}
+                        onClick={() => setIsStatusMenuOpen(v => !v)}
                         disabled={isStatusSubmitting}
-                        className="h-9 min-w-32 rounded-[var(--nexus-radius-md)] border border-[var(--nexus-color-border-strong)] bg-[var(--nexus-color-surface)] pl-3.5 pr-9 text-left text-xs font-bold text-[var(--nexus-color-secondary-strong)] shadow-[var(--nexus-shadow-sm)] outline-none transition hover:border-[var(--nexus-color-primary-muted)] focus:border-[var(--nexus-color-primary)] focus:ring-2 focus:ring-[var(--nexus-color-primary-soft)] disabled:opacity-60 disabled:cursor-wait"
-                        aria-haspopup="listbox"
-                        aria-expanded={isStatusMenuOpen}
+                        className="h-8 px-3 rounded-[var(--radius-md)] border border-[var(--g-300)] bg-white text-xs font-semibold text-[var(--s-mid)] hover:border-[var(--p)] hover:text-[var(--p)] transition disabled:opacity-50 disabled:cursor-wait flex items-center gap-1.5"
                     >
                         {statusLabels[ticket.status] ?? ticket.status}
+                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                            <path d="m6 9 6 6 6-6" />
+                        </svg>
                     </button>
-                    <svg className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-[var(--nexus-color-primary)]" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-                        <path d="m6 9 6 6 6-6" />
-                    </svg>
+
                     {isStatusMenuOpen && (
-                        <div className="absolute right-0 top-11 z-20 w-40 overflow-hidden rounded-[var(--nexus-radius-md)] border border-[var(--nexus-color-border)] bg-[var(--nexus-color-surface)] p-1 shadow-[var(--nexus-shadow-md)]" role="listbox">
-                            {TICKET_STATUSES.map(status => {
-                                const selected = ticket.status === status.value;
+                        <div className="absolute right-0 top-10 z-20 w-36 overflow-hidden rounded-[var(--radius-md)] border border-[var(--g-300)] bg-white p-1 shadow-[var(--shadow-md)]" role="listbox">
+                            {TICKET_STATUSES.map(s => {
+                                const active = ticket.status === s.value;
                                 return (
                                     <button
-                                        key={status.value}
+                                        key={s.value}
                                         type="button"
-                                        onMouseDown={event => event.preventDefault()}
-                                        onClick={() => changeStatus(status.value)}
-                                        className={`flex h-9 w-full items-center justify-between rounded-[var(--nexus-radius-sm)] px-3 text-left text-xs font-semibold transition
-                      ${selected ? "bg-[var(--nexus-color-primary-soft)] text-[var(--nexus-color-primary-strong)]" : "text-[var(--nexus-color-secondary-strong)] hover:bg-[var(--nexus-color-surface-muted)]"}`}
+                                        onMouseDown={e => e.preventDefault()}
+                                        onClick={() => changeStatus(s.value)}
+                                        className={`flex h-8 w-full items-center justify-between rounded-[var(--radius-sm)] px-3 text-xs font-semibold transition
+                                ${active
+                                                ? "bg-[var(--p-soft)] text-[var(--p)]"
+                                                : "text-[var(--s-mid)] hover:bg-[var(--g-200)]"
+                                            }`}
                                         role="option"
-                                        aria-selected={selected}
+                                        aria-selected={active}
                                     >
-                                        {status.label}
-                                        {selected && <span className="h-1.5 w-1.5 rounded-full bg-[var(--nexus-color-primary)]" />}
+                                        {s.label}
+                                        {active && <span className="w-1.5 h-1.5 rounded-full bg-[var(--p)]" />}
                                     </button>
                                 );
                             })}
                         </div>
                     )}
                 </div>
+
+                {/* Close button */}
                 <button
                     onClick={onClose}
-                    className="text-[var(--nexus-color-subtle)] hover:text-[var(--nexus-color-secondary)] text-xl leading-none p-1 rounded-[var(--nexus-radius-sm)] hover:bg-[var(--nexus-color-secondary-soft)] transition"
+                    className="text-[var(--g-500)] hover:text-[var(--s)] text-xl leading-none p-1 rounded-[var(--radius-sm)] hover:bg-[var(--g-200)] transition"
                     aria-label="Close"
                 >
                     ×
                 </button>
             </div>
-            <div ref={messagesContainerRef} className="flex-1 px-5 py-4 overflow-y-auto max-h-[calc(100vh-330px)] min-h-48 flex flex-col gap-4 bg-[var(--nexus-color-surface)]">
+            {/* ── Messages ── */}
+            <div
+                ref={messagesContainerRef}
+                className="flex-1 px-5 py-4 overflow-y-auto max-h-[calc(100vh-320px)] min-h-48 flex flex-col gap-3 bg-[var(--g-100)]"
+            >
                 {ticket.messages?.length === 0 && (
                     <EmptyState icon="💬" title="No messages yet" body="The customer has not sent any messages." />
                 )}
@@ -179,29 +216,43 @@ export function TicketDetail({ ticket, isLoading, onStatusUpdated, onClose }) {
                 ))}
             </div>
 
-            <div className="border-t border-[var(--nexus-color-border)] px-5 py-4 bg-[var(--nexus-color-surface-muted)]">
+            {/* ── Reply box ── */}
+            <div className="border-t border-[var(--g-300)] px-4 py-3 bg-white">
                 {error && (
-                    <div className="mb-3 px-3 py-2 rounded-[var(--nexus-radius-md)] bg-[var(--nexus-color-danger-soft)] border border-[var(--nexus-color-danger-soft)] text-[var(--nexus-color-danger)] text-xs">
-                        {error}
-                    </div>
+                    <p className="text-xs text-[var(--danger)] mb-2">{error}</p>
                 )}
-                <form onSubmit={submitReply} className="grid gap-2 sm:grid-cols-[1fr_118px] sm:items-stretch">
+
+                {/* Combined input + send button in one box — same as chat widget */}
+                <div className="flex items-end gap-2 px-3 py-2 rounded-[var(--radius-lg)] border border-[var(--g-300)] bg-[var(--g-100)] focus-within:border-[var(--p)] transition">
                     <textarea
+                        ref={textareaRef}
                         value={reply}
-                        onChange={e => setReply(e.target.value)}
+                        onChange={handleTextareaInput}
+                        onKeyDown={handleKeyDown}
                         placeholder="Write a reply…"
-                        required
-                        rows={2}
-                        className="h-14 min-h-14 w-full px-3.5 py-2.5 rounded-[var(--nexus-radius-md)] border border-[var(--nexus-color-border-strong)] text-sm text-[var(--nexus-color-text)] placeholder-[var(--nexus-color-subtle)] outline-none resize-none leading-relaxed bg-[var(--nexus-color-surface)] shadow-[var(--nexus-shadow-sm)] focus:border-[var(--nexus-color-primary)] focus:ring-2 focus:ring-[var(--nexus-color-primary-soft)] transition"
+                        rows={1}
+                        className="flex-1 bg-transparent border-none outline-none resize-none text-sm text-[var(--s)] placeholder-[var(--g-500)] leading-relaxed max-h-[120px] overflow-y-auto py-1 font-[inherit]"
                     />
+
+                    {/* Send button — gradient, same as chat widget */}
                     <button
-                        type="submit"
-                        disabled={isSubmitting}
-                        className="h-14 min-h-14 w-full px-4 rounded-[var(--nexus-radius-md)] [background:var(--nexus-gradient-brand)] text-[var(--nexus-color-inverse)] text-sm font-bold hover:opacity-95 disabled:opacity-60 disabled:cursor-wait transition whitespace-nowrap shadow-[var(--nexus-shadow-sm)]"
+                        type="button"
+                        onClick={submitReply}
+                        disabled={isSubmitting || !reply.trim()}
+                        aria-label="Send reply"
+                        className="w-8 h-8 rounded-[var(--radius-md)] flex items-center justify-center flex-shrink-0 transition disabled:opacity-40 disabled:cursor-default"
+                        style={{
+                            background: reply.trim()
+                                ? "var(--gradient)"
+                                : "var(--g-300)",
+                        }}
                     >
-                        {isSubmitting ? "Sending…" : "Send reply"}
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5">
+                            <line x1="22" y1="2" x2="11" y2="13" />
+                            <polygon points="22 2 15 22 11 13 2 9 22 2" />
+                        </svg>
                     </button>
-                </form>
+                </div>
             </div>
 
         </div>

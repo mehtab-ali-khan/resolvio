@@ -1,61 +1,102 @@
-:root,
-#nexus-support-widget-root {
+/* frontend/src/theme.css */
+
+:root {
   color-scheme: light;
 
-  --nexus-color-bg: #f6f8fb;
-  --nexus-color-bg-soft: #edf3f8;
+  /* ── Primary color — the main brand blue ──────────────────────────────────
+     Used for: active nav items, links, primary buttons, focus rings,
+     active ticket highlight, message badges, search highlight           */
+  --p: #2563eb;           /* main primary blue */
+  --p-soft: #eff6ff;      /* very light blue — used for active backgrounds */
+  --p-strong: #1d4ed8;    /* darker blue — used for hover states */
+
+  /* ── Secondary color — dark, serious, neutral ─────────────────────────────
+     Used for: headings, agent messages, important text, secondary buttons  */
+  --s: #111827;           /* near-black — main text and dark elements */
+  --s-mid: #374151;       /* dark grey — secondary text */
+  --s-soft: #f3f4f6;      /* light grey — used for backgrounds, hover states */
+
+  /* ── Grey scale — for structure and spacing ───────────────────────────────
+     Used for: borders, placeholder text, timestamps, subtle backgrounds   */
+  --g-100: #f9fafb;       /* almost white — page background */
+  --g-200: #f3f4f6;       /* light grey — card/panel backgrounds */
+  --g-300: #e5e7eb;       /* border color */
+  --g-400: #d1d5db;       /* stronger border */
+  --g-500: #9ca3af;       /* placeholder text, icons */
+  --g-600: #6b7280;       /* secondary/muted text */
+
+  /* ── Semantic colors — only for status/feedback, used sparingly ───────────
+     These are the ONLY non-primary colors allowed. Keep them minimal.    */
+  --success: #059669;
+  --success-soft: #d1fae5;
+  --danger: #dc2626;
+  --danger-soft: #fee2e2;
+  --warning: #d97706;
+  --warning-soft: #fef3c7;
+
+  /* ── Gradients ────────────────────────────────────────────────────────────
+     One gradient only — used for the avatar and the chat bubble button.
+     Everything else uses flat colors.                                    */
+  --gradient: linear-gradient(135deg, #2563eb, #0ea5e9);
+
+  /* ── Spacing / shape ─────────────────────────────────────────────────────  */
+  --radius-sm: 6px;
+  --radius-md: 8px;
+  --radius-lg: 12px;
+  --radius-xl: 16px;
+
+  /* ── Shadows ──────────────────────────────────────────────────────────────  */
+  --shadow-sm: 0 1px 3px rgba(0,0,0,0.08);
+  --shadow-md: 0 4px 16px rgba(0,0,0,0.10);
+  --shadow-lg: 0 8px 32px rgba(0,0,0,0.14);
+
+  /* ── Legacy aliases ───────────────────────────────────────────────────────
+     These map old variable names to new ones so existing components
+     don't break before we update them one by one.                        */
+  --nexus-color-bg: var(--g-100);
   --nexus-color-surface: #ffffff;
-  --nexus-color-surface-muted: #f7fafc;
-  --nexus-color-border: #dde5ee;
-  --nexus-color-border-strong: #c4d0dc;
-
-  --nexus-color-text: #182230;
-  --nexus-color-muted: #58677a;
-  --nexus-color-subtle: #8a98a8;
+  --nexus-color-surface-muted: var(--g-200);
+  --nexus-color-border: var(--g-300);
+  --nexus-color-border-strong: var(--g-400);
+  --nexus-color-text: var(--s);
+  --nexus-color-muted: var(--g-600);
+  --nexus-color-subtle: var(--g-500);
   --nexus-color-inverse: #ffffff;
-
-  --nexus-color-primary: #2f6fed;
-  --nexus-color-primary-strong: #2458c7;
-  --nexus-color-primary-soft: #e8f0ff;
-  --nexus-color-primary-muted: #a7c4fb;
+  --nexus-color-primary: var(--p);
+  --nexus-color-primary-strong: var(--p-strong);
+  --nexus-color-primary-soft: var(--p-soft);
+  --nexus-color-primary-muted: #93c5fd;
+  --nexus-color-secondary: var(--s-mid);
+  --nexus-color-secondary-strong: var(--s);
+  --nexus-color-secondary-soft: var(--s-soft);
+  --nexus-color-accent: var(--p);
+  --nexus-color-accent-strong: var(--p-strong);
+  --nexus-color-accent-soft: var(--p-soft);
+  --nexus-color-success: var(--success);
+  --nexus-color-success-soft: var(--success-soft);
+  --nexus-color-danger: var(--danger);
+  --nexus-color-danger-soft: var(--danger-soft);
+  --nexus-color-warning: var(--warning);
+  --nexus-color-warning-soft: var(--warning-soft);
+  --nexus-radius-sm: var(--radius-sm);
+  --nexus-radius-md: var(--radius-md);
+  --nexus-radius-lg: var(--radius-lg);
+  --nexus-radius-xl: var(--radius-xl);
+  --nexus-shadow-sm: var(--shadow-sm);
+  --nexus-shadow-md: var(--shadow-md);
+  --nexus-shadow-lg: var(--shadow-lg);
+  --nexus-gradient-brand: var(--gradient);
+  --nexus-gradient-header: var(--gradient);
+  --nexus-gradient-avatar: var(--gradient);
+  --nexus-message-agent-bg: var(--p-soft);
+  --nexus-message-agent-text: var(--p-strong);
+  --nexus-message-agent-label: var(--p);
+  --nexus-message-customer-bg: var(--g-200);
+  --nexus-message-customer-text: var(--s);
+  --nexus-message-customer-label: var(--g-600);
+  --nexus-message-customer-border: var(--g-300);
   --nexus-color-header-text: #ffffff;
-  --nexus-color-header-muted: #dbeafe;
-  --nexus-color-header-pill: rgba(255, 255, 255, 0.16);
-  --nexus-color-header-border: rgba(255, 255, 255, 0.22);
-
-  --nexus-color-secondary: #46607a;
-  --nexus-color-secondary-strong: #25364a;
-  --nexus-color-secondary-soft: #edf2f7;
-
-  --nexus-color-accent: #14a3b8;
-  --nexus-color-accent-strong: #0e7490;
-  --nexus-color-accent-soft: #e5f8fb;
-
-  --nexus-color-warning: #d97706;
-  --nexus-color-warning-soft: #fef3c7;
-  --nexus-color-success: #059669;
-  --nexus-color-success-soft: #d1fae5;
-  --nexus-color-danger: #dc2626;
-  --nexus-color-danger-soft: #fee2e2;
-
-  --nexus-message-agent-bg: #e8f0ff;
-  --nexus-message-agent-text: #1e40af;
-  --nexus-message-agent-label: #2563eb;
-  --nexus-message-customer-bg: #e5f8fb;
-  --nexus-message-customer-text: #164e63;
-  --nexus-message-customer-label: #0e7490;
-  --nexus-message-customer-border: #c6eef5;
-
-  --nexus-radius-sm: 8px;
-  --nexus-radius-md: 10px;
-  --nexus-radius-lg: 14px;
-  --nexus-radius-xl: 18px;
-
-  --nexus-shadow-sm: 0 1px 2px rgba(24, 34, 48, 0.07);
-  --nexus-shadow-md: 0 12px 30px rgba(24, 34, 48, 0.10);
-  --nexus-shadow-lg: 0 22px 64px rgba(24, 34, 48, 0.16);
-
-  --nexus-gradient-brand: linear-gradient(135deg, var(--nexus-color-primary), var(--nexus-color-accent));
-  --nexus-gradient-header: var(--nexus-gradient-brand);
-  --nexus-gradient-avatar: linear-gradient(135deg, #0ea5e9 0%, #2563eb 46%, #7c3aed 100%);
+  --nexus-color-header-muted: #bfdbfe;
+  --nexus-color-header-pill: rgba(255,255,255,0.15);
+  --nexus-color-header-border: rgba(255,255,255,0.15);
 }
