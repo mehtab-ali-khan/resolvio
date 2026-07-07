@@ -37,13 +37,10 @@ export function TicketsPage() {
     const [isLoading, setIsLoading] = useState(true);
     const [isDetailLoading, setIsDetailLoading] = useState(false);
 
-    // Build the WebSocket URL with the auth token in the query string.
-    // We can't use headers for WebSocket auth (browser limitation),
-    // so the token goes in the URL instead.
     const token = getToken();
     const wsUrl = token ? `${WS_BASE}/ws/agent/?token=${token}` : null;
 
-    // Debounce search input — wait until typing stops before searching
+    // Debounce — wait until user stops typing before sending search to backend
     useEffect(() => {
         const timer = setTimeout(() => setDebouncedSearch(search.trim()), SEARCH_DEBOUNCE_MS);
         return () => clearTimeout(timer);
@@ -86,10 +83,6 @@ export function TicketsPage() {
         if (nearBottom) loadMoreTickets();
     }
 
-    // This is the function that runs every time the server pushes
-    // a real-time update through the WebSocket connection.
-    // useCallback means this function reference stays stable across
-    // renders, so the WebSocket hook doesn't unnecessarily reconnect.
     const handleWebSocketMessage = useCallback((data) => {
         if (data.type === "ticket_update") {
             loadTickets();
@@ -102,24 +95,14 @@ export function TicketsPage() {
                 t.id === data.ticket_id
                     ? {
                         ...t,
-                        // Only mark as new if the agent does NOT currently
-                        // have this ticket open. If they're already looking
-                        // at it, the message is already visible to them —
-                        // no need to badge it.
                         is_new: isCurrentlyOpen ? false : true,
                         updated_at: new Date().toISOString()
                     }
                     : t
             )));
 
-            // If this ticket IS currently open, also tell the backend to
-            // clear is_new in the database — so if the agent refreshes or
-            // another agent loads this ticket, it won't show as unread.
             if (isCurrentlyOpen) {
-                getTicketById(data.ticket_id).catch(() => {
-                    // silent fail — this is just a "mark as read" call,
-                    // not critical if it doesn't work
-                });
+                getTicketById(data.ticket_id).catch(() => { });
             }
 
             setSelectedTicket(current => {
@@ -135,7 +118,6 @@ export function TicketsPage() {
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [statusFilter, debouncedSearch, selectedTicket]);
 
-    // Connect the WebSocket — this replaces the old polling interval entirely.
     useWebSocket(wsUrl, handleWebSocketMessage);
 
     async function selectTicket(id) {
@@ -157,11 +139,11 @@ export function TicketsPage() {
     function handleTicketStatusUpdated(ticketId, status) {
         setTickets(currentTickets =>
             currentTickets
-                .map(ticket => (ticket.id === ticketId ? { ...ticket, status } : ticket))
-                .filter(ticket => statusFilter === "all" || ticket.status === statusFilter)
+                .map(t => (t.id === ticketId ? { ...t, status } : t))
+                .filter(t => statusFilter === "all" || t.status === statusFilter)
         );
-        setSelectedTicket(currentTicket =>
-            currentTicket?.id === ticketId ? { ...currentTicket, status } : currentTicket
+        setSelectedTicket(current =>
+            current?.id === ticketId ? { ...current, status } : current
         );
     }
 
@@ -181,47 +163,62 @@ export function TicketsPage() {
 
     return (
         <div className="max-w-screen-xl mx-auto px-4 sm:px-6 py-7">
-            <div className="flex flex-wrap items-start justify-between gap-4 mb-6">
-                <div>
-                    <h1 className="text-2xl font-bold text-[var(--nexus-color-text)] tracking-tight">Tickets</h1>
-                    <p className="text-sm text-[var(--nexus-color-muted)] mt-0.5">Review complaints and reply from only one place.</p>
-                </div>
+
+            {/* ── Page header ── */}
+            <div className="mb-6">
+                <h1 className="text-2xl font-bold text-[var(--s)] tracking-tight">
+                    Tickets
+                </h1>
+                <p className="text-sm text-[var(--g-600)] mt-0.5">
+                    Review and reply to customer messages.
+                </p>
             </div>
 
+            {/* ── Error ── */}
             {error && (
-                <div className="mb-5 px-4 py-3 rounded-[var(--nexus-radius-md)] bg-[var(--nexus-color-danger-soft)] border border-[var(--nexus-color-danger-soft)] text-[var(--nexus-color-danger)] text-sm">
+                <div className="mb-5 px-4 py-3 rounded-[var(--radius-md)] bg-[var(--danger-soft)] text-[var(--danger)] text-sm">
                     {error}
                 </div>
             )}
 
+            {/* ── Main grid — list on left, detail on right ── */}
             <div className={`grid gap-4 items-start ${selectedTicket || isDetailLoading ? "lg:grid-cols-[1fr_1.1fr]" : "grid-cols-1"}`}>
 
-                <div className="bg-[var(--nexus-color-surface)] rounded-[var(--nexus-radius-xl)] border border-[var(--nexus-color-border)] shadow-[var(--nexus-shadow-sm)] overflow-hidden">
+                {/* ── Ticket list panel ── */}
+                <div className="bg-white rounded-[var(--radius-xl)] border border-[var(--g-300)] shadow-[var(--shadow-sm)] overflow-hidden">
 
-                    <div className="flex items-center gap-2 px-4 py-3 border-b border-[var(--nexus-color-border)] bg-[var(--nexus-color-surface-muted)]">
-                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--nexus-color-subtle)" strokeWidth="2">
-                            <circle cx="11" cy="11" r="8" /><line x1="21" y1="21" x2="16.65" y2="16.65" />
+                    {/* Search input */}
+                    <div className="flex items-center gap-2 px-4 py-3 border-b border-[var(--g-300)] bg-[var(--g-100)]">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--g-500)" strokeWidth="2">
+                            <circle cx="11" cy="11" r="8" />
+                            <line x1="21" y1="21" x2="16.65" y2="16.65" />
                         </svg>
                         <input
                             value={search}
                             onChange={e => setSearch(e.target.value)}
                             placeholder="Search by name, email, or message…"
-                            className="flex-1 text-sm text-[var(--nexus-color-text)] placeholder-[var(--nexus-color-subtle)] bg-transparent outline-none"
+                            className="flex-1 text-sm text-[var(--s)] placeholder-[var(--g-500)] bg-transparent outline-none"
                         />
                         {search && (
-                            <button onClick={() => setSearch("")} className="text-[var(--nexus-color-subtle)] hover:text-[var(--nexus-color-secondary)] text-lg leading-none">×</button>
+                            <button
+                                onClick={() => setSearch("")}
+                                className="text-[var(--g-500)] hover:text-[var(--s)] text-lg leading-none transition"
+                            >
+                                ×
+                            </button>
                         )}
                     </div>
 
-                    <div className="flex items-center gap-1 px-4 py-2.5 border-b border-[var(--nexus-color-border)] bg-[var(--nexus-color-surface)]">
+                    {/* Filter buttons — Default / Open / Resolved */}
+                    <div className="flex items-center gap-1 px-4 py-2.5 border-b border-[var(--g-300)] bg-white">
                         {STATUS_FILTERS.map(filter => (
                             <button
                                 key={filter.value}
                                 type="button"
                                 onClick={() => handleFilterChange(filter.value)}
-                                className={`px-3 py-1.5 rounded-[var(--nexus-radius-md)] text-xs font-bold transition ${statusFilter === filter.value
-                                    ? "bg-[var(--nexus-color-primary-soft)] text-[var(--nexus-color-primary-strong)]"
-                                    : "text-[var(--nexus-color-secondary)] hover:bg-[var(--nexus-color-surface-muted)]"
+                                className={`px-3 py-1.5 rounded-[var(--radius-md)] text-xs font-semibold transition ${statusFilter === filter.value
+                                    ? "bg-[var(--p-soft)] text-[var(--p)]"
+                                    : "text-[var(--g-600)] hover:bg-[var(--g-200)] hover:text-[var(--s)]"
                                     }`}
                             >
                                 {filter.label}
@@ -229,16 +226,28 @@ export function TicketsPage() {
                         ))}
                     </div>
 
-                    <div className="overflow-y-auto max-h-[calc(100vh-255px)]" onScroll={handleListScroll}>
+                    {/* Scrollable ticket list */}
+                    <div
+                        className="overflow-y-auto max-h-[calc(100vh-255px)]"
+                        onScroll={handleListScroll}
+                    >
+                        {/* Loading state */}
                         {isLoading && (
-                            <div className="py-10 text-center text-[var(--nexus-color-subtle)] text-sm">Loading tickets…</div>
+                            <div className="py-10 text-center text-[var(--g-500)] text-sm">
+                                Loading tickets…
+                            </div>
                         )}
+
+                        {/* Empty state */}
                         {!isLoading && tickets.length === 0 && (
                             <EmptyState
                                 icon="📭"
-                                title={search ? "No matches" : "No tickets yet"}
+                                title={search ? "No matches found" : "No tickets yet"}
+                                body={search ? "Try a different search term." : "Tickets submitted via the widget will appear here."}
                             />
                         )}
+
+                        {/* Ticket rows */}
                         {!isLoading && tickets.map((ticket, i) => {
                             const active = selectedTicket?.id === ticket.id;
                             return (
@@ -247,14 +256,16 @@ export function TicketsPage() {
                                     type="button"
                                     onClick={() => selectTicket(ticket.id)}
                                     className={`w-full text-left flex items-center gap-3 px-4 py-3.5 transition border-l-2
-                                        ${i < tickets.length - 1 ? "border-b border-[var(--nexus-color-border)]" : ""}
-                                        ${active ? "bg-[var(--nexus-color-primary-soft)] border-l-[var(--nexus-color-primary)]" : "hover:bg-[var(--nexus-color-surface-muted)] border-l-transparent"}
-                                    `}
+                                        ${i < tickets.length - 1 ? "border-b border-[var(--g-300)]" : ""}
+                                        ${active
+                                            ? "bg-[var(--p-soft)] border-l-[var(--p)]"
+                                            : "hover:bg-[var(--g-100)] border-l-transparent"
+                                        }`}
                                 >
                                     <Avatar name={ticket.customer_name} />
                                     <div className="flex-1 min-w-0">
                                         <div className="flex items-center justify-between gap-2 mb-0.5">
-                                            <span className={`text-sm truncate ${ticket.is_new ? "font-bold" : "font-semibold"} text-[var(--nexus-color-text)]`}>
+                                            <span className={`text-sm truncate ${ticket.is_new ? "font-bold" : "font-semibold"} text-[var(--s)]`}>
                                                 {ticket.customer_name}
                                             </span>
                                             <div className="flex items-center gap-1.5 flex-shrink-0">
@@ -262,18 +273,27 @@ export function TicketsPage() {
                                                 <StatusBadge status={ticket.status} />
                                             </div>
                                         </div>
-                                        <p className="text-xs text-[var(--nexus-color-muted)] truncate">{ticket.customer_email}</p>
-                                        <p className="text-[11px] text-[var(--nexus-color-subtle)] mt-0.5">{new Date(ticket.created_at).toLocaleString()}</p>
+                                        <p className="text-xs text-[var(--g-600)] truncate">
+                                            {ticket.customer_email}
+                                        </p>
+                                        <p className="text-[11px] text-[var(--g-500)] mt-0.5">
+                                            {new Date(ticket.created_at).toLocaleString()}
+                                        </p>
                                     </div>
                                 </button>
                             );
                         })}
+
+                        {/* Load more indicator */}
                         {isLoadingMore && (
-                            <div className="py-4 text-center text-[var(--nexus-color-subtle)] text-xs">Loading more…</div>
+                            <div className="py-4 text-center text-[var(--g-500)] text-xs">
+                                Loading more…
+                            </div>
                         )}
                     </div>
                 </div>
 
+                {/* ── Ticket detail panel ── */}
                 {(selectedTicket || isDetailLoading) && (
                     <TicketDetail
                         ticket={selectedTicket}

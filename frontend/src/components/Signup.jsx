@@ -35,68 +35,73 @@ export function Signup() {
     }
 
     return (
-        <div className="min-h-screen bg-[var(--nexus-color-bg)] flex items-center justify-center px-4 py-10">
+        <div className="min-h-screen bg-[var(--g-100)] flex items-center justify-center px-4 py-10">
             <div className="w-full max-w-md">
 
+                {/* Logo */}
                 <div className="flex items-center justify-center gap-3 mb-8">
-                    <div className="w-10 h-10 rounded-[var(--nexus-radius-md)] [background:var(--nexus-gradient-brand)] flex items-center justify-center shadow-[var(--nexus-shadow-md)]">
-                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
+                    <div className="w-9 h-9 rounded-[var(--radius-md)] bg-[var(--p)] flex items-center justify-center">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
                             <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" fill="white" />
                         </svg>
                     </div>
-                    <span className="text-xl font-bold text-[var(--nexus-color-text)] tracking-tight">Nexus Support</span>
+                    <span className="text-xl font-bold text-[var(--s)] tracking-tight">
+                        Nexus Support
+                    </span>
                 </div>
 
-                <div className="bg-[var(--nexus-color-surface)] rounded-[var(--nexus-radius-xl)] border border-[var(--nexus-color-border)] shadow-[var(--nexus-shadow-md)] p-8">
-                    <h1 className="text-xl font-bold text-[var(--nexus-color-text)] mb-1">Create your account</h1>
-                    <p className="text-sm text-[var(--nexus-color-muted)] mb-6">Set up your company's support desk.</p>
+                {/* Card */}
+                <div className="bg-white rounded-[var(--radius-xl)] border border-[var(--g-300)] shadow-[var(--shadow-md)] p-8">
+                    <h1 className="text-xl font-bold text-[var(--s)] mb-1">Create your account</h1>
+                    <p className="text-sm text-[var(--g-600)] mb-6">Set up your company's support desk.</p>
 
                     {error && (
-                        <div className="mb-5 px-4 py-3 rounded-[var(--nexus-radius-md)] bg-[var(--nexus-color-danger-soft)] border border-[var(--nexus-color-danger-soft)] text-[var(--nexus-color-danger)] text-sm">
+                        <div className="mb-5 px-4 py-3 rounded-[var(--radius-md)] bg-[var(--danger-soft)] text-[var(--danger)] text-sm">
                             {error}
                         </div>
                     )}
 
                     <form onSubmit={handleSubmit} className="flex flex-col gap-4">
+
                         <div className="flex flex-col gap-1.5">
-                            <label className="text-xs font-semibold text-[var(--nexus-color-secondary-strong)]">Company name</label>
+                            <label className="text-xs font-semibold text-[var(--s-mid)]">Company name</label>
                             <input
                                 name="company_name"
                                 value={form.company_name}
                                 onChange={updateField}
                                 placeholder="Acme Inc"
                                 required
-                                className="w-full px-3.5 py-2.5 rounded-[var(--nexus-radius-md)] border border-[var(--nexus-color-border)] bg-[var(--nexus-color-surface-muted)] text-sm text-[var(--nexus-color-text)] placeholder-[var(--nexus-color-subtle)] outline-none focus:border-[var(--nexus-color-primary)] focus:ring-2 focus:ring-[var(--nexus-color-primary-soft)] transition"
+                                className="w-full px-3.5 py-2.5 rounded-[var(--radius-md)] border border-[var(--g-300)] bg-[var(--g-100)] text-sm text-[var(--s)] placeholder-[var(--g-500)] outline-none focus:border-[var(--p)] transition"
                             />
                         </div>
 
                         <div className="grid grid-cols-2 gap-3">
                             <div className="flex flex-col gap-1.5">
-                                <label className="text-xs font-semibold text-[var(--nexus-color-secondary-strong)]">First name</label>
+                                <label className="text-xs font-semibold text-[var(--s-mid)]">First name</label>
                                 <input
                                     name="first_name"
                                     value={form.first_name}
                                     onChange={updateField}
                                     placeholder="John"
                                     required
-                                    className="w-full px-3.5 py-2.5 rounded-[var(--nexus-radius-md)] border border-[var(--nexus-color-border)] bg-[var(--nexus-color-surface-muted)] text-sm text-[var(--nexus-color-text)] placeholder-[var(--nexus-color-subtle)] outline-none focus:border-[var(--nexus-color-primary)] focus:ring-2 focus:ring-[var(--nexus-color-primary-soft)] transition"
+                                    className="w-full px-3.5 py-2.5 rounded-[var(--radius-md)] border border-[var(--g-300)] bg-[var(--g-100)] text-sm text-[var(--s)] placeholder-[var(--g-500)] outline-none focus:border-[var(--p)] transition"
                                 />
                             </div>
                             <div className="flex flex-col gap-1.5">
-                                <label className="text-xs font-semibold text-[var(--nexus-color-secondary-strong)]">Last name</label>
+                                <label className="text-xs font-semibold text-[var(--s-mid)]">Last name</label>
                                 <input
                                     name="last_name"
                                     value={form.last_name}
                                     onChange={updateField}
                                     placeholder="Doe"
                                     required
-                                    className="w-full px-3.5 py-2.5 rounded-[var(--nexus-radius-md)] border border-[var(--nexus-color-border)] bg-[var(--nexus-color-surface-muted)] text-sm text-[var(--nexus-color-text)] placeholder-[var(--nexus-color-subtle)] outline-none focus:border-[var(--nexus-color-primary)] focus:ring-2 focus:ring-[var(--nexus-color-primary-soft)] transition"
+                                    className="w-full px-3.5 py-2.5 rounded-[var(--radius-md)] border border-[var(--g-300)] bg-[var(--g-100)] text-sm text-[var(--s)] placeholder-[var(--g-500)] outline-none focus:border-[var(--p)] transition"
                                 />
                             </div>
                         </div>
 
                         <div className="flex flex-col gap-1.5">
-                            <label className="text-xs font-semibold text-[var(--nexus-color-secondary-strong)]">Work email</label>
+                            <label className="text-xs font-semibold text-[var(--s-mid)]">Work email</label>
                             <input
                                 name="email"
                                 type="email"
@@ -104,12 +109,12 @@ export function Signup() {
                                 onChange={updateField}
                                 placeholder="you@company.com"
                                 required
-                                className="w-full px-3.5 py-2.5 rounded-[var(--nexus-radius-md)] border border-[var(--nexus-color-border)] bg-[var(--nexus-color-surface-muted)] text-sm text-[var(--nexus-color-text)] placeholder-[var(--nexus-color-subtle)] outline-none focus:border-[var(--nexus-color-primary)] focus:ring-2 focus:ring-[var(--nexus-color-primary-soft)] transition"
+                                className="w-full px-3.5 py-2.5 rounded-[var(--radius-md)] border border-[var(--g-300)] bg-[var(--g-100)] text-sm text-[var(--s)] placeholder-[var(--g-500)] outline-none focus:border-[var(--p)] transition"
                             />
                         </div>
 
                         <div className="flex flex-col gap-1.5">
-                            <label className="text-xs font-semibold text-[var(--nexus-color-secondary-strong)]">Password</label>
+                            <label className="text-xs font-semibold text-[var(--s-mid)]">Password</label>
                             <input
                                 name="password"
                                 type="password"
@@ -118,23 +123,24 @@ export function Signup() {
                                 placeholder="Min. 8 characters"
                                 required
                                 minLength={8}
-                                className="w-full px-3.5 py-2.5 rounded-[var(--nexus-radius-md)] border border-[var(--nexus-color-border)] bg-[var(--nexus-color-surface-muted)] text-sm text-[var(--nexus-color-text)] placeholder-[var(--nexus-color-subtle)] outline-none focus:border-[var(--nexus-color-primary)] focus:ring-2 focus:ring-[var(--nexus-color-primary-soft)] transition"
+                                className="w-full px-3.5 py-2.5 rounded-[var(--radius-md)] border border-[var(--g-300)] bg-[var(--g-100)] text-sm text-[var(--s)] placeholder-[var(--g-500)] outline-none focus:border-[var(--p)] transition"
                             />
                         </div>
 
                         <button
                             type="submit"
                             disabled={isLoading}
-                            className="mt-1 w-full py-2.5 rounded-[var(--nexus-radius-md)] [background:var(--nexus-gradient-brand)] text-white text-sm font-bold shadow-[var(--nexus-shadow-sm)] hover:opacity-90 disabled:opacity-60 disabled:cursor-wait transition"
+                            className="mt-1 w-full py-2.5 rounded-[var(--radius-md)] bg-[var(--p)] text-white text-sm font-semibold hover:bg-[var(--p-strong)] disabled:opacity-60 disabled:cursor-wait transition"
                         >
                             {isLoading ? "Creating account…" : "Create account"}
                         </button>
                     </form>
                 </div>
 
-                <p className="text-center text-sm text-[var(--nexus-color-muted)] mt-5">
+                {/* Footer link */}
+                <p className="text-center text-sm text-[var(--g-600)] mt-5">
                     Already have an account?{" "}
-                    <Link to="/login" className="text-[var(--nexus-color-primary)] font-semibold hover:underline">
+                    <Link to="/login" className="text-[var(--p)] font-semibold hover:underline">
                         Sign in
                     </Link>
                 </p>
