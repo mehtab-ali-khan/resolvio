@@ -4,9 +4,9 @@
   color-scheme: light;
 
   /* ── Primary — main brand blue ── */
-  --p: #2563eb;
+  --p: #1d9e6d;
   --p-soft: #eff6ff;
-  --p-strong: #1d4ed8;
+  --p-strong: #149b6e;
 
   /* ── Secondary — dark neutral ── */
   --s: #111827;
@@ -30,7 +30,7 @@
   --warning-soft: #fef3c7;
 
   /* ── One gradient — avatars and send button only ── */
-  --gradient: linear-gradient(135deg, #2563eb, #0ea5e9);
+  --gradient: linear-gradient(135deg, #0f8a5b, #1fd1ab);
 
   /* ── Shape ── */
   --radius-sm: 6px;

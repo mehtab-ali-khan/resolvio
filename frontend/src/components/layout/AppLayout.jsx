@@ -194,7 +194,7 @@ export function AppLayout() {
     }
 
     return (
-        <div className="min-h-screen flex bg-gray-50">
+        <div className="h-screen overflow-hidden flex bg-gray-50">
 
             {/* ── Desktop sidebar ──────────────────────────────────────────────
                 Always visible on large screens.
@@ -235,7 +235,7 @@ export function AppLayout() {
             {/* ── Main content area ────────────────────────────────────────────
                 Takes up all remaining space to the right of the sidebar.
             ──────────────────────────────────────────────────────────────────── */}
-            <div className="flex-1 min-w-0 flex flex-col">
+            <div className="flex-1 min-w-0 min-h-0 flex flex-col">
 
                 {/* Mobile top bar — only visible on small screens.
                     Shows the app name + hamburger button to open the sidebar. */}
@@ -258,7 +258,7 @@ export function AppLayout() {
                 </div>
 
                 {/* Page content rendered here by React Router */}
-                <main className="flex-1 min-w-0 overflow-auto">
+                <main className="flex-1 min-w-0 min-h-0 overflow-auto">
                     <Outlet />
                 </main>
             </div>
