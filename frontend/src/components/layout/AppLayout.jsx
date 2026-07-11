@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { NavLink, Outlet, useNavigate } from "react-router";
 import { getCurrentUser, logout } from "../../api/tickets.js";
-import { Avatar } from "../shared/ui.jsx";
+import { Avatar, BrandLogo } from "../shared/ui.jsx";
 
 // ─── Nav items with clean SVG icons ──────────────────────────────────────────
 
@@ -88,9 +88,12 @@ export function AppLayout() {
                 {/* Top — logo + collapse toggle */}
                 <div className={`flex items-center h-14 border-b border-gray-100 flex-shrink-0 ${collapsed ? "justify-center px-0" : "justify-between px-4"}`}>
                     {!collapsed && (
-                        <span className="font-bold text-[15px] text-gray-900 tracking-tight">
-                            Nexus Support
-                        </span>
+                        <BrandLogo
+                            to="/"
+                            showText={true}
+                            compact={false}
+                            textClassName="text-[15px] text-gray-900"
+                        />
                     )}
                     {/* Collapse/expand toggle — only on desktop */}
                     <button
@@ -252,9 +255,7 @@ export function AppLayout() {
                             <line x1="3" y1="18" x2="21" y2="18" />
                         </svg>
                     </button>
-                    <span className="font-bold text-[15px] text-gray-900 tracking-tight">
-                        Nexus Support
-                    </span>
+                    <BrandLogo to="/" textClassName="text-[15px] text-gray-900" />
                 </div>
 
                 {/* Page content rendered here by React Router */}

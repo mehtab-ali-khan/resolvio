@@ -1,5 +1,7 @@
 // frontend/src/components/shared/ui.jsx
 
+import { Link } from "react-router";
+
 export function Avatar({ name, size = "md" }) {
     const initials = name?.split(" ").map(w => w[0]).slice(0, 2).join("").toUpperCase() ?? "?";
     const sizeClass = size === "sm" ? "w-8 h-8 text-xs" : size === "lg" ? "w-11 h-11 text-base" : "w-9 h-9 text-sm";
@@ -10,6 +12,41 @@ export function Avatar({ name, size = "md" }) {
         >
             {initials}
         </div>
+    );
+}
+
+function LogoMark({ compact = false }) {
+    const sizeClass = compact ? "w-6 h-6" : "w-7 h-7";
+
+    return (
+        <span
+            className={`${sizeClass} rounded-[var(--radius-md)] flex items-center justify-center flex-shrink-0 shadow-[var(--shadow-sm)]`}
+            style={{ background: "var(--gradient)" }}
+            aria-hidden="true"
+        >
+            <svg width={compact ? "12" : "13"} height={compact ? "12" : "13"} viewBox="0 0 24 24" fill="none">
+                <path
+                    d="M7 17V7l10 10V7"
+                    stroke="white"
+                    strokeWidth="2.6"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                />
+            </svg>
+        </span>
+    );
+}
+
+export function BrandLogo({ to = "/", showText = true, compact = false, className = "", textClassName = "" }) {
+    return (
+        <Link to={to} className={`inline-flex items-center gap-2 select-none ${className}`}>
+            <LogoMark compact={compact} />
+            {showText && (
+                <span className={`font-bold tracking-tight ${textClassName}`}>
+                    Nexus Support
+                </span>
+            )}
+        </Link>
     );
 }
 

@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { Link, useNavigate } from "react-router";
 import { signup } from "../api/tickets.js";
+import { BrandLogo } from "./shared/ui.jsx";
 
 export function Signup() {
     const navigate = useNavigate();
@@ -39,16 +40,7 @@ export function Signup() {
             <div className="w-full max-w-md">
 
                 {/* Logo */}
-                <div className="flex items-center justify-center gap-3 mb-8">
-                    <div className="w-9 h-9 rounded-[var(--radius-md)] bg-[var(--p)] flex items-center justify-center">
-                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
-                            <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" fill="white" />
-                        </svg>
-                    </div>
-                    <span className="text-xl font-bold text-[var(--s)] tracking-tight">
-                        Nexus Support
-                    </span>
-                </div>
+                <BrandLogo to="/" className="justify-center mb-8 w-full" textClassName="text-xl text-[var(--s)]" />
 
                 {/* Card */}
                 <div className="bg-white rounded-[var(--radius-xl)] border border-[var(--g-300)] shadow-[var(--shadow-md)] p-8">
