@@ -45,7 +45,7 @@ export function AppLayout() {
     const navigate = useNavigate();
 
     // isCollapsed — desktop sidebar is narrow (icons only) or wide (icons + text)
-    const [isCollapsed, setIsCollapsed] = useState(true);
+    const [isCollapsed, setIsCollapsed] = useState(false);
 
     // isMobileOpen — on small screens, sidebar is hidden by default.
     // This controls whether it slides in as an overlay.

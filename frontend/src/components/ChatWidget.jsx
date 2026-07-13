@@ -7,11 +7,30 @@ import { useWebSocket } from "../hooks/useWebSocket.js";
 const STORAGE_KEY = "nexus_ticket_token";
 
 // ─── Styles ───────────────────────────────────────────────────────────────────
-// All styles are plain, hardcoded values — no CSS variables.
-// This keeps the widget completely self-contained and unaffected by
-// whatever CSS the customer's website already has loaded.
+// The widget defines its own theme variables so it stays self-contained
+// while matching the app's shared color system.
 
 const styles = `
+  #nexus-widget-root {
+    --nw-p: #1d9e6d;
+    --nw-p-soft: #eff6ff;
+    --nw-p-strong: #149b6e;
+    --nw-s: #111827;
+    --nw-s-mid: #374151;
+    --nw-s-soft: #f3f4f6;
+    --nw-g-100: #f9fafb;
+    --nw-g-200: #f3f4f6;
+    --nw-g-300: #e5e7eb;
+    --nw-g-400: #d1d5db;
+    --nw-g-500: #9ca3af;
+    --nw-g-600: #6b7280;
+    --nw-shadow-sm: 0 1px 3px rgba(0,0,0,0.08);
+    --nw-shadow-md: 0 4px 16px rgba(0,0,0,0.10);
+    --nw-shadow-lg: 0 8px 32px rgba(0,0,0,0.14);
+    --nw-gradient: linear-gradient(135deg, #0f8a5b, #1fd1ab);
+    color-scheme: light;
+  }
+
   #nexus-widget-root * {
     box-sizing: border-box;
     font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif;
@@ -50,7 +69,7 @@ const styles = `
     display: inline-block;
     width: 5px; height: 5px;
     border-radius: 50%;
-    background: #9ca3af;
+    background: var(--nw-g-500);
     animation: nw-dot 1.2s ease infinite;
   }
   .nw-dot:nth-child(2) { animation-delay: 0.15s; }
@@ -58,7 +77,7 @@ const styles = `
 
   .nw-textarea:focus { outline: none; }
 
-  .nw-send-btn:hover { background: linear-gradient(135deg, #0ea5e9 0%, #2563eb 46%, #7c3aed 100%) !important; }
+  .nw-send-btn:hover { background: var(--nw-gradient) !important; }
 
   .nw-msg-input {
     resize: none;
@@ -66,17 +85,17 @@ const styles = `
     background: transparent;
     font-size: 14px;
     line-height: 1.5;
-    color: #111827;
+    color: var(--nw-s);
     flex: 1;
     max-height: 120px;
     overflow-y: auto;
   }
-  .nw-msg-input::placeholder { color: #9ca3af; }
+  .nw-msg-input::placeholder { color: var(--nw-g-500); }
   .nw-msg-input:focus { outline: none; }
 
   .nw-scroll::-webkit-scrollbar { width: 4px; }
   .nw-scroll::-webkit-scrollbar-track { background: transparent; }
-  .nw-scroll::-webkit-scrollbar-thumb { background: #e5e7eb; border-radius: 4px; }
+  .nw-scroll::-webkit-scrollbar-thumb { background: var(--nw-g-300); border-radius: 4px; }
 `;
 
 function injectStyles() {
@@ -112,13 +131,13 @@ function HeaderBtn({ onClick, label, children }) {
         width: "30px", height: "30px",
         borderRadius: "8px", border: "none",
         background: "transparent",
-        color: "#6b7280",
+        color: "var(--nw-g-600)",
         cursor: "pointer",
         display: "flex", alignItems: "center", justifyContent: "center",
         transition: "background 0.15s, color 0.15s",
       }}
-      onMouseEnter={e => { e.currentTarget.style.background = "#f3f4f6"; e.currentTarget.style.color = "#111827"; }}
-      onMouseLeave={e => { e.currentTarget.style.background = "transparent"; e.currentTarget.style.color = "#6b7280"; }}
+      onMouseEnter={e => { e.currentTarget.style.background = "var(--nw-g-200)"; e.currentTarget.style.color = "var(--nw-s)"; }}
+      onMouseLeave={e => { e.currentTarget.style.background = "transparent"; e.currentTarget.style.color = "var(--nw-g-600)"; }}
     >
       {children}
     </button>
@@ -143,12 +162,10 @@ function MessageBubble({ msg }) {
         fontSize: "14px",
         lineHeight: "1.55",
         borderRadius: fromTeam ? "4px 18px 18px 18px" : "18px 4px 18px 18px",
-        // Agent/AI — plain white with a subtle grey border
-        // Customer — light grey background
-        background: fromTeam ? "#ffffff" : "#f3f4f6",
-        color: "#111827",
-        border: fromTeam ? "1px solid #e5e7eb" : "none",
-        boxShadow: fromTeam ? "0 1px 3px rgba(0,0,0,0.06)" : "none",
+        background: fromTeam ? "#ffffff" : "var(--nw-s-soft)",
+        color: "var(--nw-s)",
+        border: fromTeam ? "1px solid var(--nw-g-300)" : "none",
+        boxShadow: fromTeam ? "var(--nw-shadow-sm)" : "none",
       }}>
         <div style={{
           marginBottom: "4px",
@@ -156,7 +173,7 @@ function MessageBubble({ msg }) {
           fontWeight: 700,
           letterSpacing: "0.04em",
           textTransform: "uppercase",
-          color: fromTeam ? "#6b7280" : "#4b5563",
+          color: fromTeam ? "var(--nw-g-600)" : "var(--nw-s-mid)",
         }}>
           {senderLabel}
         </div>
@@ -287,16 +304,17 @@ export function ChatWidget({ apiKey }) {
   if (chatState === "closed") {
     return (
       <button
+        id="nexus-widget-root"
         className="nw-bubble"
         type="button"
         onClick={() => setChatState("minimized")}
         style={{
           position: "fixed", bottom: "24px", right: "24px",
           width: "56px", height: "56px", borderRadius: "50%",
-          background: "linear-gradient(135deg, #0ea5e9 0%, #2563eb 46%, #7c3aed 100%)",
+          background: "var(--nw-gradient)",
           border: "none", cursor: "pointer",
           display: "flex", alignItems: "center", justifyContent: "center",
-          boxShadow: "0 4px 20px rgba(0,0,0,0.25)",
+          boxShadow: "var(--nw-shadow-lg)",
           zIndex: 999999,
         }}
         aria-label="Open support chat"
@@ -330,7 +348,7 @@ export function ChatWidget({ apiKey }) {
       display: "flex", alignItems: "center",
       justifyContent: "space-between",
       padding: "12px 14px",
-      borderBottom: "1px solid #f3f4f6",
+      borderBottom: "1px solid var(--nw-g-200)",
       background: "#ffffff",
       flexShrink: 0,
     }}>
@@ -339,7 +357,7 @@ export function ChatWidget({ apiKey }) {
         {/* Small dark icon */}
         <div style={{
           width: "32px", height: "32px", borderRadius: "8px",
-          background: "linear-gradient(135deg, #0ea5e9 0%, #2563eb 46%, #7c3aed 100%)",
+          background: "var(--nw-gradient)",
           display: "flex", alignItems: "center", justifyContent: "center",
           flexShrink: 0,
         }}>
@@ -348,7 +366,7 @@ export function ChatWidget({ apiKey }) {
           </svg>
         </div>
         <div>
-          <p style={{ fontSize: "16px", fontWeight: "600", color: "#111827", lineHeight: 1.2 }}>
+          <p style={{ fontSize: "16px", fontWeight: "600", color: "var(--nw-s)", lineHeight: 1.2 }}>
             SUPPORT
           </p>
         </div>
@@ -406,7 +424,7 @@ export function ChatWidget({ apiKey }) {
           onSubmit={submitTicket}
           style={{ flex: 1, overflowY: "auto", padding: "20px", display: "flex", flexDirection: "column", gap: "14px" }}
         >
-          <p style={{ fontSize: "13px", color: "#6b7280", lineHeight: 1.6 }}>
+          <p style={{ fontSize: "13px", color: "var(--nw-g-600)", lineHeight: 1.6 }}>
             Send us a message and we'll get back to you as soon as possible.
           </p>
 
@@ -422,13 +440,13 @@ export function ChatWidget({ apiKey }) {
               onChange={e => setForm({ ...form, customer_name: e.target.value })}
               style={{
                 padding: "9px 12px", borderRadius: "8px",
-                border: "1px solid #e5e7eb",
-                fontSize: "14px", color: "#111827",
-                background: "#f9fafb", outline: "none",
+                border: "1px solid var(--nw-g-300)",
+                fontSize: "14px", color: "var(--nw-s)",
+                background: "var(--nw-g-100)", outline: "none",
                 transition: "border-color 0.15s",
               }}
-              onFocus={e => (e.target.style.borderColor = "#111827")}
-              onBlur={e => (e.target.style.borderColor = "#e5e7eb")}
+              onFocus={e => (e.target.style.borderColor = "var(--nw-s)")}
+              onBlur={e => (e.target.style.borderColor = "var(--nw-g-300)")}
             />
           </div>
 
@@ -444,13 +462,13 @@ export function ChatWidget({ apiKey }) {
               onChange={e => setForm({ ...form, customer_email: e.target.value })}
               style={{
                 padding: "9px 12px", borderRadius: "8px",
-                border: "1px solid #e5e7eb",
-                fontSize: "14px", color: "#111827",
-                background: "#f9fafb", outline: "none",
+                border: "1px solid var(--nw-g-300)",
+                fontSize: "14px", color: "var(--nw-s)",
+                background: "var(--nw-g-100)", outline: "none",
                 transition: "border-color 0.15s",
               }}
-              onFocus={e => (e.target.style.borderColor = "#111827")}
-              onBlur={e => (e.target.style.borderColor = "#e5e7eb")}
+              onFocus={e => (e.target.style.borderColor = "var(--nw-s)")}
+              onBlur={e => (e.target.style.borderColor = "var(--nw-g-300)")}
             />
           </div>
 
@@ -465,20 +483,20 @@ export function ChatWidget({ apiKey }) {
               onChange={e => setForm({ ...form, message: e.target.value })}
               style={{
                 padding: "9px 12px", borderRadius: "8px",
-                border: "1px solid #e5e7eb",
-                fontSize: "14px", color: "#111827",
-                background: "#f9fafb", outline: "none",
+                border: "1px solid var(--nw-g-300)",
+                fontSize: "14px", color: "var(--nw-s)",
+                background: "var(--nw-g-100)", outline: "none",
                 resize: "vertical", lineHeight: 1.5,
                 transition: "border-color 0.15s",
                 fontFamily: "inherit",
               }}
-              onFocus={e => (e.target.style.borderColor = "#111827")}
-              onBlur={e => (e.target.style.borderColor = "#e5e7eb")}
+              onFocus={e => (e.target.style.borderColor = "var(--nw-s)")}
+              onBlur={e => (e.target.style.borderColor = "var(--nw-g-300)")}
             />
           </div>
 
           {error && (
-            <p style={{ fontSize: "13px", color: "#ef4444" }}>{error}</p>
+            <p style={{ fontSize: "13px", color: "var(--danger, #dc2626)" }}>{error}</p>
           )}
 
           <button
@@ -486,7 +504,7 @@ export function ChatWidget({ apiKey }) {
             disabled={isSubmitting}
             style={{
               padding: "11px 16px", borderRadius: "8px",
-              background: "#111827", color: "white",
+              background: "var(--nw-p)", color: "white",
               fontSize: "14px", fontWeight: "600",
               border: "none", cursor: isSubmitting ? "wait" : "pointer",
               opacity: isSubmitting ? 0.6 : 1,
@@ -511,11 +529,11 @@ export function ChatWidget({ apiKey }) {
               display: "flex",
               flexDirection: "column",
               gap: "8px",
-              background: "#fafafa",
+              background: "var(--nw-g-100)",
             }}
           >
             {messages.length === 0 && (
-              <p style={{ textAlign: "center", color: "#9ca3af", fontSize: "13px", marginTop: "20px" }}>
+              <p style={{ textAlign: "center", color: "var(--nw-g-500)", fontSize: "13px", marginTop: "20px" }}>
                 No messages yet.
               </p>
             )}
@@ -529,11 +547,11 @@ export function ChatWidget({ apiKey }) {
           <div style={{
             padding: "10px 12px",
             background: "#ffffff",
-            borderTop: "1px solid #f3f4f6",
+            borderTop: "1px solid var(--nw-g-200)",
             flexShrink: 0,
           }}>
             {error && (
-              <p style={{ fontSize: "12px", color: "#ef4444", marginBottom: "8px" }}>{error}</p>
+              <p style={{ fontSize: "12px", color: "var(--danger, #dc2626)", marginBottom: "8px" }}>{error}</p>
             )}
 
             {/* Input row — textarea + send button together in one box */}
@@ -543,8 +561,8 @@ export function ChatWidget({ apiKey }) {
               gap: "8px",
               padding: "8px 12px",
               borderRadius: "12px",
-              border: "1px solid #e5e7eb",
-              background: "#f9fafb",
+              border: "1px solid var(--nw-g-300)",
+              background: "var(--nw-g-100)",
               transition: "border-color 0.15s",
             }}
               onFocus={() => { }}
@@ -566,7 +584,7 @@ export function ChatWidget({ apiKey }) {
                   lineHeight: "1.5",
                   paddingTop: "6px",
                   paddingBottom: "6px",
-                  color: "#111827",
+                  color: "var(--nw-s)",
                   flex: 1,
                   maxHeight: "120px",
                   overflowY: "auto",
@@ -585,7 +603,7 @@ export function ChatWidget({ apiKey }) {
                 style={{
                   width: "32px", height: "32px",
                   borderRadius: "8px",
-                  background: newMessage.trim() ? "linear-gradient(135deg, #0ea5e9 0%, #2563eb 46%, #7c3aed 100%)" : "#e5e7eb",
+                  background: newMessage.trim() ? "var(--nw-gradient)" : "var(--nw-g-300)",
                   border: "none",
                   cursor: isSubmitting || !newMessage.trim() ? "wait" : "pointer",
                   opacity: isSubmitting ? 0.75 : 1,
@@ -626,8 +644,8 @@ export function ChatWidget({ apiKey }) {
           height: "520px",
           borderRadius: "16px",
           background: "#ffffff",
-          boxShadow: "0 8px 40px rgba(0,0,0,0.14)",
-          border: "1px solid #f3f4f6",
+          boxShadow: "var(--nw-shadow-lg)",
+          border: "1px solid var(--nw-g-200)",
           zIndex: 999999,
           display: "flex",
           flexDirection: "column",
@@ -652,7 +670,7 @@ export function ChatWidget({ apiKey }) {
         width: "min(45%, 480px)",
         background: "#ffffff",
         boxShadow: "-4px 0 24px rgba(0,0,0,0.08)",
-        borderLeft: "1px solid #f3f4f6",
+        borderLeft: "1px solid var(--nw-g-200)",
         zIndex: 999999,
         display: "flex",
         flexDirection: "column",
