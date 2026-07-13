@@ -27,9 +27,9 @@ function LogoMark({ compact = false }) {
             <svg width={compact ? "12" : "13"} height={compact ? "12" : "13"} viewBox="0 0 24 24" fill="none" aria-hidden="true">
                 <text
                     x="12"
-                    y="17"
+                    y="22"
                     textAnchor="middle"
-                    fontSize="16"
+                    fontSize="28"
                     fontWeight="800"
                     fill="white"
                     fontFamily="Arial, Helvetica, sans-serif"
