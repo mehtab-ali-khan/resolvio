@@ -32,6 +32,11 @@ class AnswerOutcome:
 
 def answer_question(*, company, question: str) -> AnswerOutcome:
     provider = get_ai_provider()
+    logger.info(
+        "AI answer requested: company_id=%s question_length=%s",
+        company.id,
+        len(question.strip()),
+    )
     question_embedding = provider.embed_text(question)
 
     closest_chunks = list(
@@ -76,6 +81,15 @@ def answer_question(*, company, question: str) -> AnswerOutcome:
         result.confidence,
         is_confident,
     )
+
+    if not result.can_answer:
+        logger.info("AI answer not attempted by provider: company_id=%s", company.id)
+    else:
+        logger.info(
+            "AI answer generated: company_id=%s visible_to_customer=%s",
+            company.id,
+            is_confident,
+        )
 
     return AnswerOutcome(
         attempted=True,

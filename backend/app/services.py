@@ -47,6 +47,12 @@ def create_ticket_with_message(*, company, customer_name, customer_email, messag
     customer_email = customer_email.strip()
     message = message.strip()
 
+    logger.info(
+        "Creating ticket: company_id=%s customer_email=%s",
+        company.id,
+        customer_email,
+    )
+
     with transaction.atomic():
         ticket = (
             Ticket.objects.filter(company=company, customer_email=customer_email)
@@ -68,6 +74,12 @@ def create_ticket_with_message(*, company, customer_name, customer_email, messag
             sender_type=Message.SenderType.CUSTOMER,
             body=message,
         )
+
+    logger.info(
+        "Customer message stored: ticket_id=%s is_new_ticket=%s",
+        ticket.id,
+        is_new_ticket,
+    )
 
     # Notify all agents of this company — new or updated ticket
     _push_to_agents(
@@ -143,6 +155,12 @@ def add_agent_reply(*, ticket, message):
         body=message,
     )
 
+    logger.info(
+        "Agent reply stored: ticket_id=%s message_id=%s",
+        ticket.id,
+        created_message.id,
+    )
+
     # Push to agents (so other agents watching this ticket see it too)
     _push_to_agents(
         ticket.company_id,
@@ -185,6 +203,12 @@ def add_customer_message(*, ticket, message):
         body=message,
     )
 
+    logger.info(
+        "Customer message stored: ticket_id=%s message_id=%s",
+        ticket.id,
+        created_message.id,
+    )
+
     # Notify agents that this ticket has a new customer message
     _push_to_agents(
         ticket.company_id,
@@ -208,18 +232,45 @@ def add_customer_message(*, ticket, message):
 
 
 def create_knowledge_base_article(*, company, title, body):
-    article = KnowledgeBaseArticle.objects.create(
-        company=company,
-        title=title.strip(),
-        body=body.strip(),
+    try:
+        article = KnowledgeBaseArticle.objects.create(
+            company=company,
+            title=title.strip(),
+            body=body.strip(),
+        )
+        index_article(article)
+    except Exception:
+        logger.exception(
+            "Knowledge base article create failed: company_id=%s",
+            company.id,
+        )
+        raise
+
+    logger.info(
+        "Knowledge base article created: article_id=%s company_id=%s",
+        article.id,
+        company.id,
     )
-    index_article(article)
     return article
 
 
 def update_knowledge_base_article(*, article, title, body):
-    article.title = title.strip()
-    article.body = body.strip()
-    article.save(update_fields=["title", "body", "updated_at"])
-    index_article(article)
+    try:
+        article.title = title.strip()
+        article.body = body.strip()
+        article.save(update_fields=["title", "body", "updated_at"])
+        index_article(article)
+    except Exception:
+        logger.exception(
+            "Knowledge base article update failed: article_id=%s company_id=%s",
+            article.id,
+            article.company_id,
+        )
+        raise
+
+    logger.info(
+        "Knowledge base article updated: article_id=%s company_id=%s",
+        article.id,
+        article.company_id,
+    )
     return article

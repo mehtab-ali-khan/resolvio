@@ -1,5 +1,7 @@
 # backend/app/views.py
 
+import logging
+
 from django.shortcuts import get_object_or_404
 from django.contrib.postgres.search import SearchQuery
 from rest_framework import generics, status
@@ -39,6 +41,8 @@ from .services import (
     create_ticket_with_message,
     update_knowledge_base_article,
 )
+
+logger = logging.getLogger(__name__)
 
 # ─── Pagination and Throttle classes ────────────────────────────────────────────────────────────────────
 
@@ -170,11 +174,26 @@ class TicketListCreateView(ListCreateAPIView):
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         validated_data = serializer.validated_data
-        ticket = create_ticket_with_message(
-            company=validated_data["api_key"],
-            customer_name=validated_data["customer_name"],
-            customer_email=validated_data["customer_email"],
-            message=validated_data["message"],
+
+        try:
+            ticket = create_ticket_with_message(
+                company=validated_data["api_key"],
+                customer_name=validated_data["customer_name"],
+                customer_email=validated_data["customer_email"],
+                message=validated_data["message"],
+            )
+        except Exception:
+            logger.exception(
+                "Ticket creation failed for customer_email=%s",
+                validated_data.get("customer_email"),
+            )
+            raise
+
+        logger.info(
+            "Ticket created: ticket_id=%s customer_email=%s is_new=%s",
+            ticket.id,
+            validated_data["customer_email"],
+            ticket.is_new,
         )
 
         return Response(
@@ -221,8 +240,23 @@ class AgentReplyCreateView(CreateAPIView):
         )
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
-        message = add_agent_reply(
-            ticket=ticket, message=serializer.validated_data["message"]
+        try:
+            message = add_agent_reply(
+                ticket=ticket, message=serializer.validated_data["message"]
+            )
+        except Exception:
+            logger.exception(
+                "Agent reply failed: ticket_id=%s agent_id=%s",
+                ticket.id,
+                request.user.id,
+            )
+            raise
+
+        logger.info(
+            "Agent replied: ticket_id=%s agent_id=%s message_id=%s",
+            ticket.id,
+            request.user.id,
+            message.id,
         )
 
         return Response(
@@ -246,11 +280,27 @@ class KnowledgeBaseArticleListCreateView(ListCreateAPIView):
     def create(self, request, *args, **kwargs):
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
-        article = create_knowledge_base_article(
-            company=request.user.company,
-            title=serializer.validated_data["title"],
-            body=serializer.validated_data["body"],
+        try:
+            article = create_knowledge_base_article(
+                company=request.user.company,
+                title=serializer.validated_data["title"],
+                body=serializer.validated_data["body"],
+            )
+        except Exception:
+            logger.exception(
+                "Knowledge base article creation failed: company_id=%s user_id=%s",
+                request.user.company_id,
+                request.user.id,
+            )
+            raise
+
+        logger.info(
+            "Knowledge base article created: article_id=%s company_id=%s user_id=%s",
+            article.id,
+            request.user.company_id,
+            request.user.id,
         )
+
         return Response(
             KnowledgeBaseArticleSerializer(article).data,
             status=status.HTTP_201_CREATED,
@@ -269,11 +319,26 @@ class KnowledgeBaseArticleDetailView(RetrieveUpdateDestroyAPIView):
         article = self.get_object()
         serializer = self.get_serializer(article, data=request.data, partial=partial)
         serializer.is_valid(raise_exception=True)
-        updated_article = update_knowledge_base_article(
-            article=article,
-            title=serializer.validated_data.get("title", article.title),
-            body=serializer.validated_data.get("body", article.body),
+        try:
+            updated_article = update_knowledge_base_article(
+                article=article,
+                title=serializer.validated_data.get("title", article.title),
+                body=serializer.validated_data.get("body", article.body),
+            )
+        except Exception:
+            logger.exception(
+                "Knowledge base article update failed: article_id=%s user_id=%s",
+                article.id,
+                request.user.id,
+            )
+            raise
+
+        logger.info(
+            "Knowledge base article updated: article_id=%s user_id=%s",
+            updated_article.id,
+            request.user.id,
         )
+
         return Response(KnowledgeBaseArticleSerializer(updated_article).data)
 
 
@@ -298,8 +363,18 @@ class CustomerMessageCreateView(CreateAPIView):
         ticket = get_object_or_404(Ticket, access_token=self.kwargs["access_token"])
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
-        message = add_customer_message(
-            ticket=ticket, message=serializer.validated_data["message"]
+        try:
+            message = add_customer_message(
+                ticket=ticket, message=serializer.validated_data["message"]
+            )
+        except Exception:
+            logger.exception("Customer message failed: ticket_id=%s", ticket.id)
+            raise
+
+        logger.info(
+            "Customer message created: ticket_id=%s message_id=%s",
+            ticket.id,
+            message.id,
         )
 
         return Response(

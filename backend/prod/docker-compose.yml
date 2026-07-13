@@ -23,6 +23,12 @@ services:
     depends_on:
       - db
       - redis
+    logging:
+      driver: awslogs
+      options:
+        awslogs-region: "ap-southeast-2"
+        awslogs-group: "/resolvio/backend"
+        awslogs-stream: "backend"
 
   db:
     image: pgvector/pgvector:pg16

@@ -1,7 +1,10 @@
 # backend/app/consumers.py
 
+import logging
 import json
 from channels.generic.websocket import AsyncWebsocketConsumer
+
+logger = logging.getLogger(__name__)
 
 
 class AgentConsumer(AsyncWebsocketConsumer):
@@ -18,6 +21,9 @@ class AgentConsumer(AsyncWebsocketConsumer):
         # Reject the connection if no valid token was provided or the
         # user has no company — they shouldn't be here.
         if not user or not user.company_id:
+            logger.warning(
+                "Rejected agent websocket connection: missing user or company"
+            )
             await self.close()
             return
 
@@ -32,12 +38,22 @@ class AgentConsumer(AsyncWebsocketConsumer):
         )
 
         await self.accept()
+        logger.info(
+            "Agent websocket connected: user_id=%s company_id=%s",
+            user.id,
+            user.company_id,
+        )
 
     async def disconnect(self, close_code):
         if hasattr(self, "company_group"):
             await self.channel_layer.group_discard(
                 self.company_group,
                 self.channel_name,
+            )
+            logger.info(
+                "Agent websocket disconnected: company_group=%s close_code=%s",
+                self.company_group,
+                close_code,
             )
 
     # Called by channel_layer.group_send() from services.py when a
@@ -72,6 +88,7 @@ class WidgetConsumer(AsyncWebsocketConsumer):
         ticket = await get_ticket()
 
         if not ticket:
+            logger.warning("Rejected widget websocket connection: invalid access token")
             await self.close()
             return
 
@@ -83,12 +100,18 @@ class WidgetConsumer(AsyncWebsocketConsumer):
         )
 
         await self.accept()
+        logger.info("Widget websocket connected: ticket_id=%s", ticket.id)
 
     async def disconnect(self, close_code):
         if hasattr(self, "ticket_group"):
             await self.channel_layer.group_discard(
                 self.ticket_group,
                 self.channel_name,
+            )
+            logger.info(
+                "Widget websocket disconnected: ticket_group=%s close_code=%s",
+                self.ticket_group,
+                close_code,
             )
 
     # Called when a new agent/AI message is saved to this ticket

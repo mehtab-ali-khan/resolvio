@@ -1,9 +1,13 @@
 # backend/app/middleware.py
 
+import logging
+
 from django.http import HttpResponse
 from channels.db import database_sync_to_async
 from channels.middleware import BaseMiddleware
 from rest_framework.authtoken.models import Token
+
+logger = logging.getLogger(__name__)
 
 WIDGET_PATH_PREFIXES = ("/api/widget/",)
 WIDGET_CREATE_TICKET_PATH = "/api/tickets/"
@@ -43,6 +47,9 @@ class WidgetCorsMiddleware:
         # Answer the browser's preflight request directly - don't let it
         # fall through to the view at all.
         if is_widget and request.method == "OPTIONS" and origin:
+            logger.debug(
+                "Widget CORS preflight handled: path=%s origin=%s", request.path, origin
+            )
             response = HttpResponse()
             response["Access-Control-Allow-Origin"] = origin
             response["Access-Control-Allow-Methods"] = (
@@ -58,6 +65,14 @@ class WidgetCorsMiddleware:
         if is_widget and origin:
             response["Access-Control-Allow-Origin"] = origin
             response["Vary"] = "Origin"
+
+        if is_widget:
+            logger.debug(
+                "Widget CORS response sent: path=%s method=%s origin=%s",
+                request.path,
+                request.method,
+                origin,
+            )
 
         return response
 
@@ -76,8 +91,10 @@ def get_user_from_token(token_key):
     """
     try:
         token = Token.objects.select_related("user").get(key=token_key)
+        logger.debug("WebSocket token resolved to user_id=%s", token.user_id)
         return token.user
     except Token.DoesNotExist:
+        logger.warning("WebSocket token auth failed: invalid token")
         return None
 
 
@@ -103,5 +120,7 @@ class TokenAuthMiddleware(BaseMiddleware):
         scope["user"] = None
         if token_key:
             scope["user"] = await get_user_from_token(token_key)
+        else:
+            logger.warning("WebSocket token auth missing token in query string")
 
         return await super().__call__(scope, receive, send)
