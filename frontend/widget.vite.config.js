@@ -11,7 +11,7 @@ export default defineConfig({
     cssCodeSplit: false,
     lib: {
       entry: resolve(__dirname, "src/widget.js"),
-      name: "NexusSupport",
+      name: "Resolvio",
       formats: ["iife"],
       fileName: () => "widget.js",
     },

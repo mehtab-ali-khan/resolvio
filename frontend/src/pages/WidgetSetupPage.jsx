@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { getCurrentUser } from "../api/tickets.js";
 
-const WIDGET_URL = import.meta.env.VITE_WIDGET_URL || "http://localhost:8080/widget.js";
+const WIDGET_URL = import.meta.env.VITE_WIDGET_URL;
 
 export function WidgetSetupPage() {
     const [user, setUser] = useState(null);
@@ -14,7 +14,7 @@ export function WidgetSetupPage() {
     }, []);
 
     const embedScript = user
-        ? `<script src="${WIDGET_URL}"></script>\n<script>\n  window.addEventListener('load', function () {\n    NexusSupport.init({\n      apiKey: "${user.company_api_key}"\n    });\n  });\n</script>`
+        ? `<script src="${WIDGET_URL}"></script>\n<script>\n  window.addEventListener('load', function () {\n    Resolvio.init({\n      apiKey: "${user.company_api_key}"\n    });\n  });\n</script>`
         : "Loading...";
 
     async function handleCopy() {
@@ -120,7 +120,7 @@ export function WidgetSetupPage() {
                     "Save and publish. The chat bubble will appear on your site.",
                 ].map((text, i) => (
                     <div key={i} className="flex items-start gap-4 px-4 py-3.5 border-b last:border-0 border-[var(--g-300)]">
-                        {/* Step number circle — primary blue, consistent with app */}
+                        {/* Step number circle — primary green, consistent with app */}
                         <span className="w-6 h-6 rounded-full bg-[var(--p)] text-white text-xs font-bold flex items-center justify-center flex-shrink-0 mt-0.5">
                             {i + 1}
                         </span>

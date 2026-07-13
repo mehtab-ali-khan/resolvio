@@ -24,14 +24,18 @@ function LogoMark({ compact = false }) {
             style={{ background: "var(--gradient)" }}
             aria-hidden="true"
         >
-            <svg width={compact ? "12" : "13"} height={compact ? "12" : "13"} viewBox="0 0 24 24" fill="none">
-                <path
-                    d="M7 17V7l10 10V7"
-                    stroke="white"
-                    strokeWidth="2.6"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                />
+            <svg width={compact ? "12" : "13"} height={compact ? "12" : "13"} viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                <text
+                    x="12"
+                    y="17"
+                    textAnchor="middle"
+                    fontSize="16"
+                    fontWeight="800"
+                    fill="white"
+                    fontFamily="Arial, Helvetica, sans-serif"
+                >
+                    R
+                </text>
             </svg>
         </span>
     );
@@ -43,7 +47,7 @@ export function BrandLogo({ to = "/", showText = true, compact = false, classNam
             <LogoMark compact={compact} />
             {showText && (
                 <span className={`font-bold tracking-tight ${textClassName}`}>
-                    Nexus Support
+                    Resolvio
                 </span>
             )}
         </Link>

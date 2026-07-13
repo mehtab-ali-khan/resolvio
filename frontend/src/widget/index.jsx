@@ -1,8 +1,7 @@
 import { createRoot } from "react-dom/client";
 import { ChatWidget } from "../components/ChatWidget.jsx";
 
-const WIDGET_CSS_URL =
-  import.meta.env.VITE_WIDGET_CSS_URL || "https://nexus-support-ai.vercel.app/widget.css";
+const WIDGET_CSS_URL = import.meta.env.VITE_WIDGET_CSS_URL;
 
 function injectStyles() {
   const link = document.createElement("link");
@@ -11,17 +10,17 @@ function injectStyles() {
   document.head.appendChild(link);
 }
 function ensureMountPoint() {
-  const existing = document.getElementById("nexus-support-widget-root");
+  const existing = document.getElementById("resolvio-widget-root");
   if (existing) return existing;
   const mount = document.createElement("div");
-  mount.id = "nexus-support-widget-root";
+  mount.id = "resolvio-widget-root";
   document.body.appendChild(mount);
   return mount;
 }
 
 function init({ apiKey } = {}) {
   if (!apiKey) {
-    console.error("[NexusSupport] apiKey is required.");
+    console.error("[Resolvio] apiKey is required.");
     return;
   }
   injectStyles();
@@ -29,4 +28,4 @@ function init({ apiKey } = {}) {
   createRoot(mount).render(<ChatWidget apiKey={apiKey} />);
 }
 
-window.NexusSupport = { init };
+window.Resolvio = { init };
