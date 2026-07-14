@@ -1,0 +1,37 @@
+{% extends "admin/base_site.html" %}
+
+{% block content %}
+<h1>AI Cost Report</h1>
+<p>Total cost per company, calculated from real Gemini token usage.</p>
+
+<table style="width:100%; border-collapse: collapse; margin-top: 20px;">
+  <thead>
+    <tr style="text-align:left; border-bottom: 2px solid #ccc;">
+      <th style="padding: 8px;">Company</th>
+      <th style="padding: 8px;">Total Cost</th>
+      <th style="padding: 8px;">Breakdown by Model</th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for row in report_rows %}
+    <tr style="border-bottom: 1px solid #eee;">
+      <td style="padding: 8px;">{{ row.company.name }}</td>
+      <td style="padding: 8px;">${{ row.total_cost|floatformat:6 }}</td>
+      <td style="padding: 8px;">
+        {% for model_name, cost in row.by_model.items %}
+          {% if cost == None %}
+            <div style="color: #b00;">{{ model_name }}: no pricing found</div>
+          {% else %}
+            <div>{{ model_name }}: ${{ cost|floatformat:6 }}</div>
+          {% endif %}
+        {% endfor %}
+      </td>
+    </tr>
+    {% empty %}
+    <tr>
+      <td colspan="3" style="padding: 8px;">No companies found.</td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+{% endblock %}
