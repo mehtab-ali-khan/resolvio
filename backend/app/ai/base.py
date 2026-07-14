@@ -1,7 +1,7 @@
 # backend/app/ai/base.py
 
 from abc import ABC, abstractmethod
-
+from dataclasses import dataclass
 from pydantic import BaseModel
 
 
@@ -17,6 +17,19 @@ class AIAnswer(BaseModel):
     confidence: float
 
 
+@dataclass
+class TokenUsage:
+    """
+    How many tokens a single AI call cost. Every provider method that talks
+    to a paid API must return one of these alongside its normal result, so
+    the app can log and total up real cost per company. output_tokens is 0
+    for calls that only ever consume tokens (like embeddings).
+    """
+
+    input_tokens: int
+    output_tokens: int = 0
+
+
 class AIProvider(ABC):
     """
     The contract every AI provider must follow.
@@ -27,14 +40,20 @@ class AIProvider(ABC):
     """
 
     @abstractmethod
-    def embed_text(self, text: str) -> list[float]:
-        """Turn a piece of text into a vector (a list of numbers)."""
+    def embed_text(self, text: str) -> tuple[list[float], TokenUsage]:
+        """
+        Turn a piece of text into a vector (a list of numbers).
+        Returns (embedding, usage) so callers can log the real cost.
+        """
         raise NotImplementedError
 
     @abstractmethod
-    def generate_answer(self, question: str, context_chunks: list[str]) -> AIAnswer:
+    def generate_answer(
+        self, question: str, context_chunks: list[str]
+    ) -> tuple[AIAnswer, TokenUsage]:
         """
         Given a customer's question and the matching knowledge base chunks,
         return an answer plus the model's own confidence self-check.
+        Returns (answer, usage) so callers can log the real cost.
         """
         raise NotImplementedError
