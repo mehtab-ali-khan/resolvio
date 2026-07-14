@@ -2,11 +2,11 @@
 
 import logging
 from dataclasses import dataclass
-
 from pgvector.django import CosineDistance
 
 from .factory import get_ai_provider
-from ..models import ArticleChunk  # field names agreed on, not yet written
+from .usage import log_ai_usage
+from ..models import AIUsageLog, ArticleChunk
 
 logger = logging.getLogger(__name__)
 
@@ -30,14 +30,22 @@ class AnswerOutcome:
     confidence: float | None
 
 
-def answer_question(*, company, question: str) -> AnswerOutcome:
+def answer_question(*, company, question: str, ticket=None) -> AnswerOutcome:
     provider = get_ai_provider()
     logger.info(
         "AI answer requested: company_id=%s question_length=%s",
         company.id,
         len(question.strip()),
     )
-    question_embedding = provider.embed_text(question)
+
+    question_embedding, _embed_usage = provider.embed_text(question)
+    log_ai_usage(
+        company=company,
+        ticket=ticket,
+        model_name=provider.EMBEDDING_MODEL,
+        purpose=AIUsageLog.Purpose.EMBEDDING,
+        usage=_embed_usage,
+    )
 
     closest_chunks = list(
         ArticleChunk.objects.filter(company=company)
@@ -72,7 +80,17 @@ def answer_question(*, company, question: str) -> AnswerOutcome:
     logger.info("Gate 1 passed: best similarity %.2f - calling Gemini", best_similarity)
 
     chunk_texts = [chunk.content for chunk in closest_chunks]
-    result = provider.generate_answer(question=question, context_chunks=chunk_texts)
+    result, usage = provider.generate_answer(
+        question=question, context_chunks=chunk_texts
+    )
+
+    log_ai_usage(
+        company=company,
+        ticket=ticket,
+        model_name=provider.generation_model_name,
+        purpose=AIUsageLog.Purpose.ANSWER_GENERATION,
+        usage=usage,
+    )
 
     is_confident = result.can_answer and result.confidence >= CONFIDENCE_THRESHOLD
     logger.info(
