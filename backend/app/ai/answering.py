@@ -42,7 +42,7 @@ def answer_question(*, company, question: str, ticket=None) -> AnswerOutcome:
     log_ai_usage(
         company=company,
         ticket=ticket,
-        model_name=provider.EMBEDDING_MODEL,
+        model_name=provider.embedding_model_name,
         purpose=AIUsageLog.Purpose.EMBEDDING,
         usage=_embed_usage,
     )
