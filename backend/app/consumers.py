@@ -18,8 +18,6 @@ class AgentConsumer(AsyncWebsocketConsumer):
     async def connect(self):
         user = self.scope.get("user")
 
-        # Reject the connection if no valid token was provided or the
-        # user has no company — they shouldn't be here.
         if not user or not user.company_id:
             logger.warning(
                 "Rejected agent websocket connection: missing user or company"
@@ -29,9 +27,6 @@ class AgentConsumer(AsyncWebsocketConsumer):
 
         self.company_group = f"company_{user.company_id}"
 
-        # Join this agent to their company's group on the shared
-        # whiteboard (Redis). From now on, any message sent to
-        # "company_X" group will arrive here instantly.
         await self.channel_layer.group_add(
             self.company_group,
             self.channel_name,
@@ -56,9 +51,6 @@ class AgentConsumer(AsyncWebsocketConsumer):
                 close_code,
             )
 
-    # Called by channel_layer.group_send() from services.py when a
-    # new ticket or message arrives — this is what actually pushes
-    # the data to the agent's browser.
     async def ticket_update(self, event):
         await self.send(text_data=json.dumps(event["data"]))
 
@@ -114,6 +106,5 @@ class WidgetConsumer(AsyncWebsocketConsumer):
                 close_code,
             )
 
-    # Called when a new agent/AI message is saved to this ticket
     async def new_message(self, event):
         await self.send(text_data=json.dumps(event["data"]))

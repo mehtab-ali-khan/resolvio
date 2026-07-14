@@ -1,7 +1,6 @@
 # backend/app/ai/factory.py
 
 import os
-
 from .base import AIProvider
 from .gemini import GeminiProvider
 

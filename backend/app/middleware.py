@@ -77,9 +77,6 @@ class WidgetCorsMiddleware:
         return response
 
 
-# backend/app/middleware.py — add this BELOW your existing WidgetCorsMiddleware
-
-
 @database_sync_to_async
 def get_user_from_token(token_key):
     """

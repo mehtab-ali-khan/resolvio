@@ -22,7 +22,7 @@ def _push_to_agents(company_id, data):
     async_to_sync(channel_layer.group_send)(
         f"company_{company_id}",
         {
-            "type": "ticket_update",  # must match the method name in AgentConsumer
+            "type": "ticket_update",
             "data": data,
         },
     )
@@ -36,7 +36,7 @@ def _push_to_widget(ticket_id, data):
     async_to_sync(channel_layer.group_send)(
         f"ticket_{ticket_id}",
         {
-            "type": "new_message",  # must match the method name in WidgetConsumer
+            "type": "new_message",
             "data": data,
         },
     )
@@ -81,7 +81,6 @@ def create_ticket_with_message(*, company, customer_name, customer_email, messag
         is_new_ticket,
     )
 
-    # Notify all agents of this company — new or updated ticket
     _push_to_agents(
         company.id,
         {
@@ -98,7 +97,9 @@ def create_ticket_with_message(*, company, customer_name, customer_email, messag
 
 def _attempt_ai_reply(*, ticket, question):
     try:
-        outcome = answer_question(company=ticket.company, question=question)
+        outcome = answer_question(
+            company=ticket.company, question=question, ticket=ticket
+        )
     except Exception:
         logger.exception("AI reply attempt failed for ticket #%s", ticket.id)
         return
@@ -114,7 +115,6 @@ def _attempt_ai_reply(*, ticket, question):
         ai_confidence=outcome.confidence,
     )
 
-    # Push AI reply to the agent dashboard
     _push_to_agents(
         ticket.company_id,
         {
@@ -131,7 +131,6 @@ def _attempt_ai_reply(*, ticket, question):
         },
     )
 
-    # Only push visible AI replies to the customer widget
     if outcome.visible_to_customer:
         _push_to_widget(
             ticket.id,
@@ -161,7 +160,6 @@ def add_agent_reply(*, ticket, message):
         created_message.id,
     )
 
-    # Push to agents (so other agents watching this ticket see it too)
     _push_to_agents(
         ticket.company_id,
         {
@@ -178,7 +176,6 @@ def add_agent_reply(*, ticket, message):
         },
     )
 
-    # Push to the customer's widget so they see the reply instantly
     _push_to_widget(
         ticket.id,
         {
@@ -209,7 +206,6 @@ def add_customer_message(*, ticket, message):
         created_message.id,
     )
 
-    # Notify agents that this ticket has a new customer message
     _push_to_agents(
         ticket.company_id,
         {

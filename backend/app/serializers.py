@@ -172,9 +172,6 @@ class CustomerTicketDetailSerializer(serializers.ModelSerializer):
         ]
 
     def get_messages(self, ticket):
-        # ticket.messages is prefetched by the view - filtering in Python here
-        # (instead of calling .filter() on the manager) reuses that prefetch
-        # instead of triggering a second database query.
         visible_messages = [m for m in ticket.messages.all() if not m.is_internal]
         return CustomerMessageSerializer(visible_messages, many=True).data
 
