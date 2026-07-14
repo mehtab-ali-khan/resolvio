@@ -1,4 +1,5 @@
 # backend/app/models.py
+
 import uuid
 from django.contrib.auth.models import AbstractUser, BaseUserManager
 from django.db import models
@@ -189,3 +190,77 @@ class ArticleChunk(models.Model):
 
     def __str__(self):
         return f"Chunk {self.chunk_index} of article #{self.article_id}"
+
+
+class AIModelPricing(models.Model):
+    """
+    A small price list you update by hand whenever a provider changes
+    prices. Kept separate from AIUsageLog so old usage rows never need
+    to be rewritten when a price changes.
+    """
+
+    class Provider(models.TextChoices):
+        GOOGLE = "google", "Google (Gemini)"
+        OPENAI = "openai", "OpenAI (ChatGPT)"
+        ANTHROPIC = "anthropic", "Anthropic (Claude)"
+
+    provider = models.CharField(max_length=20, choices=Provider.choices)
+    model_name = models.CharField(max_length=100)  # e.g. "gemini-2.5-flash"
+
+    input_price_per_1k = models.DecimalField(max_digits=10, decimal_places=6)
+    output_price_per_1k = models.DecimalField(max_digits=10, decimal_places=6)
+
+    is_active = models.BooleanField(default=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return f"{self.provider}/{self.model_name}"
+
+
+class AIUsageLog(models.Model):
+    """
+    One row per AI call, of any kind, from any provider. This is the raw
+    source of truth - cost is calculated later by joining against
+    AIModelPricing, not stored here directly.
+
+    Only two things currently create rows here:
+    - answer_generation: when Gate 1 passes and Gemini writes a reply
+    - embedding: when a Help Article chunk gets embedded for search
+    Gate 1 itself never creates a row - it's a free similarity check.
+    """
+
+    Provider = AIModelPricing.Provider  # reuse the same provider choices
+
+    class Purpose(models.TextChoices):
+        ANSWER_GENERATION = "answer_generation", "Answer generated after Gate 1 passed"
+        EMBEDDING = "embedding", "Embedding a Help Article chunk for search"
+
+    company = models.ForeignKey(
+        Company,
+        on_delete=models.CASCADE,
+        related_name="ai_usage_logs",
+    )
+    ticket = models.ForeignKey(
+        Ticket,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="ai_usage_logs",
+    )
+
+    provider = models.CharField(max_length=20, choices=Provider.choices)
+    model_name = models.CharField(max_length=100)
+    purpose = models.CharField(max_length=30, choices=Purpose.choices)
+
+    input_tokens = models.PositiveIntegerField()
+    output_tokens = models.PositiveIntegerField(default=0)
+
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        indexes = [
+            models.Index(fields=["company", "created_at"]),
+        ]
+
+    def __str__(self):
+        return f"{self.company} - {self.model_name} - {self.purpose}"
