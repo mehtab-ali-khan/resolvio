@@ -193,12 +193,6 @@ class ArticleChunk(models.Model):
 
 
 class AIModelPricing(models.Model):
-    """
-    A small price list you update by hand whenever a provider changes
-    prices. Kept separate from AIUsageLog so old usage rows never need
-    to be rewritten when a price changes.
-    """
-
     class Provider(models.TextChoices):
         GOOGLE = "google", "Google (Gemini)"
         OPENAI = "openai", "OpenAI (ChatGPT)"
@@ -217,24 +211,16 @@ class AIModelPricing(models.Model):
         return f"{self.provider}/{self.model_name}"
 
 
+# Replace your existing AIUsageLog class in models.py with this version.
+# (AIModelPricing class stays exactly the same, no changes needed there.)
+
+
 class AIUsageLog(models.Model):
-    """
-    One row per AI call, of any kind, from any provider. This is the raw
-    source of truth - cost is calculated later by joining against
-    AIModelPricing, not stored here directly.
-
-    Only two things currently create rows here:
-    - answer_generation: when Gate 1 passes and Gemini writes a reply
-    - embedding: when a Help Article chunk gets embedded for search
-    Gate 1 itself never creates a row - it's a free similarity check.
-    """
-
-    Provider = AIModelPricing.Provider  # reuse the same provider choices
-
     class Purpose(models.TextChoices):
         ANSWER_GENERATION = "answer_generation", "Answer generated after Gate 1 passed"
         EMBEDDING = "embedding", "Embedding a Help Article chunk for search"
 
+    Provider = AIModelPricing.Provider  # reuse the same provider choices
     company = models.ForeignKey(
         Company,
         on_delete=models.CASCADE,
@@ -247,6 +233,13 @@ class AIUsageLog(models.Model):
         blank=True,
         related_name="ai_usage_logs",
     )
+    message = models.ForeignKey(
+        Message,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="ai_usage_logs",
+    )
 
     provider = models.CharField(max_length=20, choices=Provider.choices)
     model_name = models.CharField(max_length=100)
@@ -254,6 +247,7 @@ class AIUsageLog(models.Model):
 
     input_tokens = models.PositiveIntegerField()
     output_tokens = models.PositiveIntegerField(default=0)
+    cost = models.DecimalField(max_digits=12, decimal_places=6, default=0)
 
     created_at = models.DateTimeField(auto_now_add=True)
 

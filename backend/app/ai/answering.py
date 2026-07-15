@@ -4,9 +4,9 @@ import logging
 from dataclasses import dataclass
 from pgvector.django import CosineDistance
 
+from .base import TokenUsage
 from .factory import get_ai_provider
-from .usage import log_ai_usage
-from ..models import AIUsageLog, ArticleChunk
+from ..models import ArticleChunk
 
 logger = logging.getLogger(__name__)
 
@@ -21,16 +21,24 @@ class AnswerOutcome:
     """
     What the RAG pipeline decided about a customer's question.
     This module deliberately knows nothing about tickets or messages -
-    the caller turns this outcome into an actual Message later.
+    the caller turns this outcome into an actual Message, THEN logs
+    usage against that message, since messages don't exist yet while
+    we're still inside this function.
     """
 
-    attempted: bool  # False if Gate 1 stopped things before any LLM call
+    attempted: bool
     visible_to_customer: bool
     answer_text: str | None
     confidence: float | None
 
+    question_embedding_usage: TokenUsage
+    question_embedding_model: str
 
-def answer_question(*, company, question: str, ticket=None) -> AnswerOutcome:
+    answer_usage: TokenUsage | None = None
+    answer_model_name: str | None = None
+
+
+def answer_question(*, company, question: str) -> AnswerOutcome:
     provider = get_ai_provider()
     logger.info(
         "AI answer requested: company_id=%s question_length=%s",
@@ -38,14 +46,7 @@ def answer_question(*, company, question: str, ticket=None) -> AnswerOutcome:
         len(question.strip()),
     )
 
-    question_embedding, _embed_usage = provider.embed_text(question)
-    log_ai_usage(
-        company=company,
-        ticket=ticket,
-        model_name=provider.embedding_model_name,
-        purpose=AIUsageLog.Purpose.EMBEDDING,
-        usage=_embed_usage,
-    )
+    question_embedding, embed_usage = provider.embed_text(question)
 
     closest_chunks = list(
         ArticleChunk.objects.filter(company=company)
@@ -60,6 +61,8 @@ def answer_question(*, company, question: str, ticket=None) -> AnswerOutcome:
             visible_to_customer=False,
             answer_text=None,
             confidence=None,
+            question_embedding_usage=embed_usage,
+            question_embedding_model=provider.embedding_model_name,
         )
 
     best_similarity = 1 - closest_chunks[0].distance
@@ -75,21 +78,15 @@ def answer_question(*, company, question: str, ticket=None) -> AnswerOutcome:
             visible_to_customer=False,
             answer_text=None,
             confidence=None,
+            question_embedding_usage=embed_usage,
+            question_embedding_model=provider.embedding_model_name,
         )
 
     logger.info("Gate 1 passed: best similarity %.2f - calling Gemini", best_similarity)
 
     chunk_texts = [chunk.content for chunk in closest_chunks]
-    result, usage = provider.generate_answer(
+    result, answer_usage = provider.generate_answer(
         question=question, context_chunks=chunk_texts
-    )
-
-    log_ai_usage(
-        company=company,
-        ticket=ticket,
-        model_name=provider.generation_model_name,
-        purpose=AIUsageLog.Purpose.ANSWER_GENERATION,
-        usage=usage,
     )
 
     is_confident = result.can_answer and result.confidence >= CONFIDENCE_THRESHOLD
@@ -114,4 +111,8 @@ def answer_question(*, company, question: str, ticket=None) -> AnswerOutcome:
         visible_to_customer=is_confident,
         answer_text=result.answer,
         confidence=result.confidence,
+        question_embedding_usage=embed_usage,
+        question_embedding_model=provider.embedding_model_name,
+        answer_usage=answer_usage,
+        answer_model_name=provider.generation_model_name,
     )

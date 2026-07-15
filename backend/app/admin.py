@@ -103,11 +103,14 @@ class AIModelPricingAdmin(admin.ModelAdmin):
 class AIUsageLogAdmin(admin.ModelAdmin):
     list_display = (
         "company",
+        "ticket",
+        "message",
         "provider",
         "model_name",
         "purpose",
         "input_tokens",
         "output_tokens",
+        "cost",
         "created_at",
     )
     list_filter = ("company", "provider", "model_name", "purpose")

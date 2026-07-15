@@ -6,7 +6,8 @@ from channels.layers import get_channel_layer
 from django.db import transaction
 from .ai.answering import answer_question
 from .ai.indexing import index_article
-from .models import KnowledgeBaseArticle, Message, Ticket
+from .ai.usage import log_ai_usage
+from .models import KnowledgeBaseArticle, Message, Ticket, AIUsageLog
 
 logger = logging.getLogger(__name__)
 channel_layer = get_channel_layer()
@@ -69,7 +70,7 @@ def create_ticket_with_message(*, company, customer_name, customer_email, messag
                 customer_email=customer_email,
             )
 
-        Message.objects.create(
+        customer_message = Message.objects.create(
             ticket=ticket,
             sender_type=Message.SenderType.CUSTOMER,
             body=message,
@@ -90,29 +91,47 @@ def create_ticket_with_message(*, company, customer_name, customer_email, messag
         },
     )
 
-    _attempt_ai_reply(ticket=ticket, question=message)
+    _attempt_ai_reply(ticket=ticket, customer_message=customer_message)
 
     return ticket
 
 
-def _attempt_ai_reply(*, ticket, question):
+def _attempt_ai_reply(*, ticket, customer_message):
+    question = customer_message.body
+
     try:
-        outcome = answer_question(
-            company=ticket.company, question=question, ticket=ticket
-        )
+        outcome = answer_question(company=ticket.company, question=question)
     except Exception:
         logger.exception("AI reply attempt failed for ticket #%s", ticket.id)
         return
 
+    log_ai_usage(
+        company=ticket.company,
+        ticket=ticket,
+        message=customer_message,
+        model_name=outcome.question_embedding_model,
+        purpose=AIUsageLog.Purpose.EMBEDDING,
+        usage=outcome.question_embedding_usage,
+    )
+
     if not outcome.attempted:
         return
 
-    message = Message.objects.create(
+    ai_message = Message.objects.create(
         ticket=ticket,
         sender_type=Message.SenderType.AI,
         body=outcome.answer_text,
         is_internal=not outcome.visible_to_customer,
         ai_confidence=outcome.confidence,
+    )
+
+    log_ai_usage(
+        company=ticket.company,
+        ticket=ticket,
+        message=ai_message,
+        model_name=outcome.answer_model_name,
+        purpose=AIUsageLog.Purpose.ANSWER_GENERATION,
+        usage=outcome.answer_usage,
     )
 
     _push_to_agents(
@@ -121,12 +140,12 @@ def _attempt_ai_reply(*, ticket, question):
             "type": "new_message",
             "ticket_id": ticket.id,
             "message": {
-                "id": message.id,
-                "sender_type": message.sender_type,
-                "body": message.body,
-                "is_internal": message.is_internal,
-                "ai_confidence": message.ai_confidence,
-                "created_at": message.created_at.isoformat(),
+                "id": ai_message.id,
+                "sender_type": ai_message.sender_type,
+                "body": ai_message.body,
+                "is_internal": ai_message.is_internal,
+                "ai_confidence": ai_message.ai_confidence,
+                "created_at": ai_message.created_at.isoformat(),
             },
         },
     )
@@ -137,13 +156,49 @@ def _attempt_ai_reply(*, ticket, question):
             {
                 "type": "new_message",
                 "message": {
-                    "id": message.id,
-                    "sender_type": message.sender_type,
-                    "body": message.body,
-                    "created_at": message.created_at.isoformat(),
+                    "id": ai_message.id,
+                    "sender_type": ai_message.sender_type,
+                    "body": ai_message.body,
+                    "created_at": ai_message.created_at.isoformat(),
                 },
             },
         )
+
+
+def add_customer_message(*, ticket, message):
+    message = message.strip()
+    created_message = Message.objects.create(
+        ticket=ticket,
+        sender_type=Message.SenderType.CUSTOMER,
+        body=message,
+    )
+
+    logger.info(
+        "Customer message stored: ticket_id=%s message_id=%s",
+        ticket.id,
+        created_message.id,
+    )
+
+    # Notify agents that this ticket has a new customer message
+    _push_to_agents(
+        ticket.company_id,
+        {
+            "type": "new_message",
+            "ticket_id": ticket.id,
+            "message": {
+                "id": created_message.id,
+                "sender_type": created_message.sender_type,
+                "body": created_message.body,
+                "is_internal": False,
+                "ai_confidence": None,
+                "created_at": created_message.created_at.isoformat(),
+            },
+        },
+    )
+
+    _attempt_ai_reply(ticket=ticket, customer_message=created_message)
+
+    return created_message
 
 
 def add_agent_reply(*, ticket, message):
@@ -188,41 +243,6 @@ def add_agent_reply(*, ticket, message):
             },
         },
     )
-
-    return created_message
-
-
-def add_customer_message(*, ticket, message):
-    message = message.strip()
-    created_message = Message.objects.create(
-        ticket=ticket,
-        sender_type=Message.SenderType.CUSTOMER,
-        body=message,
-    )
-
-    logger.info(
-        "Customer message stored: ticket_id=%s message_id=%s",
-        ticket.id,
-        created_message.id,
-    )
-
-    _push_to_agents(
-        ticket.company_id,
-        {
-            "type": "new_message",
-            "ticket_id": ticket.id,
-            "message": {
-                "id": created_message.id,
-                "sender_type": created_message.sender_type,
-                "body": created_message.body,
-                "is_internal": False,
-                "ai_confidence": None,
-                "created_at": created_message.created_at.isoformat(),
-            },
-        },
-    )
-
-    _attempt_ai_reply(ticket=ticket, question=message)
 
     return created_message
 
