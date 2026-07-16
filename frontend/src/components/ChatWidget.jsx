@@ -667,7 +667,7 @@ export function ChatWidget({ apiKey }) {
       style={{
         position: "fixed",
         top: 0, right: 0, bottom: 0,
-        width: "min(45%, 480px)",
+        width: "50%",
         background: "#ffffff",
         boxShadow: "-4px 0 24px rgba(0,0,0,0.08)",
         borderLeft: "1px solid var(--nw-g-200)",
