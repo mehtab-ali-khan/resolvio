@@ -96,6 +96,12 @@ const styles = `
   .nw-scroll::-webkit-scrollbar { width: 4px; }
   .nw-scroll::-webkit-scrollbar-track { background: transparent; }
   .nw-scroll::-webkit-scrollbar-thumb { background: var(--nw-g-300); border-radius: 4px; }
+
+  @media (max-width: 600px) {
+    .nw-maximized {
+      width: 75% !important;
+    }
+  }
 `;
 
 function injectStyles() {
