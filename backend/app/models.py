@@ -211,10 +211,6 @@ class AIModelPricing(models.Model):
         return f"{self.provider}/{self.model_name}"
 
 
-# Replace your existing AIUsageLog class in models.py with this version.
-# (AIModelPricing class stays exactly the same, no changes needed there.)
-
-
 class AIUsageLog(models.Model):
     class Purpose(models.TextChoices):
         ANSWER_GENERATION = "answer_generation", "Answer generated after Gate 1 passed"

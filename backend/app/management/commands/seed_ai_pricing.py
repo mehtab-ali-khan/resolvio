@@ -16,11 +16,23 @@ PRICES = [
         "input_price_per_1k": "0.00015",  # $0.15 per 1M input tokens
         "output_price_per_1k": "0.0",  # embeddings have no output cost
     },
+    {
+        "provider": AIModelPricing.Provider.OPENAI,
+        "model_name": "gpt-4o-mini",
+        "input_price_per_1k": "0.00015",  # $0.15 per 1M input tokens
+        "output_price_per_1k": "0.0006",  # $0.60 per 1M output tokens
+    },
+    {
+        "provider": AIModelPricing.Provider.ANTHROPIC,
+        "model_name": "claude-haiku-4-5-20251001",
+        "input_price_per_1k": "0.001",  # $1.00 per 1M input tokens
+        "output_price_per_1k": "0.005",  # $5.00 per 1M output tokens
+    },
 ]
 
 
 class Command(BaseCommand):
-    help = "Seeds or updates AIModelPricing rows with current known Gemini prices."
+    help = "Seeds or updates AIModelPricing rows with current known provider prices."
 
     def handle(self, *args, **options):
         for entry in PRICES:
