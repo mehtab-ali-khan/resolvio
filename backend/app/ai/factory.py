@@ -4,6 +4,7 @@ import os
 from .base import AIProvider
 from .gemini import GeminiProvider
 from .openai import OpenAIProvider
+from .claude import ClaudeProvider
 
 
 def get_embedding_provider() -> AIProvider:
@@ -28,5 +29,7 @@ def get_generation_provider() -> AIProvider:
         return GeminiProvider()
     if provider_name == "openai":
         return OpenAIProvider()
+    if provider_name == "claude":
+        return ClaudeProvider()
 
     raise ValueError(f"Unknown GENERATION_PROVIDER: {provider_name}")
