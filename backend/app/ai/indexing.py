@@ -3,7 +3,7 @@
 import logging
 from django.db import transaction
 from .chunking import split_into_chunks
-from .factory import get_ai_provider
+from .factory import get_embedding_provider
 from .usage import log_ai_usage
 from ..models import AIUsageLog, ArticleChunk
 
@@ -13,10 +13,10 @@ logger = logging.getLogger(__name__)
 def index_article(article):
     """
     Rebuilds the searchable chunks for a KnowledgeBaseArticle from scratch.
-    Never raises — if anything fails, it saves a clean status on the article
+    Never raises - if anything fails, it saves a clean status on the article
     and logs the real technical error for developers to investigate.
     """
-    provider = get_ai_provider()
+    provider = get_embedding_provider()
     chunk_texts = split_into_chunks(article.body)
 
     try:

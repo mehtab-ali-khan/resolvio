@@ -5,7 +5,7 @@ from dataclasses import dataclass
 from pgvector.django import CosineDistance
 
 from .base import TokenUsage
-from .factory import get_ai_provider
+from .factory import get_embedding_provider, get_generation_provider
 from ..models import ArticleChunk
 
 logger = logging.getLogger(__name__)
@@ -39,14 +39,16 @@ class AnswerOutcome:
 
 
 def answer_question(*, company, question: str) -> AnswerOutcome:
-    provider = get_ai_provider()
+    embedding_provider = get_embedding_provider()
+    generation_provider = get_generation_provider()
+
     logger.info(
         "AI answer requested: company_id=%s question_length=%s",
         company.id,
         len(question.strip()),
     )
 
-    question_embedding, embed_usage = provider.embed_text(question)
+    question_embedding, embed_usage = embedding_provider.embed_text(question)
 
     closest_chunks = list(
         ArticleChunk.objects.filter(company=company)
@@ -62,14 +64,14 @@ def answer_question(*, company, question: str) -> AnswerOutcome:
             answer_text=None,
             confidence=None,
             question_embedding_usage=embed_usage,
-            question_embedding_model=provider.embedding_model_name,
+            question_embedding_model=embedding_provider.embedding_model_name,
         )
 
     best_similarity = 1 - closest_chunks[0].distance
 
     if best_similarity < SIMILARITY_THRESHOLD:
         logger.info(
-            "Gate 1 FAILED: best similarity %.2f is below threshold %.2f - skipping Gemini call",
+            "Gate 1 FAILED: best similarity %.2f is below threshold %.2f - skipping generation call",
             best_similarity,
             SIMILARITY_THRESHOLD,
         )
@@ -79,13 +81,16 @@ def answer_question(*, company, question: str) -> AnswerOutcome:
             answer_text=None,
             confidence=None,
             question_embedding_usage=embed_usage,
-            question_embedding_model=provider.embedding_model_name,
+            question_embedding_model=embedding_provider.embedding_model_name,
         )
 
-    logger.info("Gate 1 passed: best similarity %.2f - calling Gemini", best_similarity)
+    logger.info(
+        "Gate 1 passed: best similarity %.2f - calling generation provider",
+        best_similarity,
+    )
 
     chunk_texts = [chunk.content for chunk in closest_chunks]
-    result, answer_usage = provider.generate_answer(
+    result, answer_usage = generation_provider.generate_answer(
         question=question, context_chunks=chunk_texts
     )
 
@@ -112,7 +117,7 @@ def answer_question(*, company, question: str) -> AnswerOutcome:
         answer_text=result.answer,
         confidence=result.confidence,
         question_embedding_usage=embed_usage,
-        question_embedding_model=provider.embedding_model_name,
+        question_embedding_model=embedding_provider.embedding_model_name,
         answer_usage=answer_usage,
-        answer_model_name=provider.generation_model_name,
+        answer_model_name=generation_provider.generation_model_name,
     )

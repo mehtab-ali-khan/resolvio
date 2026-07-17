@@ -4,16 +4,30 @@ import os
 from .base import AIProvider
 from .gemini import GeminiProvider
 
+# from .openai_provider import OpenAIProvider
 
-def get_ai_provider() -> AIProvider:
+
+def get_embedding_provider() -> AIProvider:
     """
-    The single place in the whole app that decides which provider class
-    gets used. Every other piece of code calls this function and never
-    imports GeminiProvider (or any future provider) directly.
+    The embedding model is permanent and shared by every company's articles
+    and questions - it never changes based on env settings. Switching it
+    would silently break search for every company already using the app,
+    since old and new embeddings would no longer be comparable.
     """
-    provider_name = os.environ.get("AI_PROVIDER", "gemini")
+    return GeminiProvider()
+
+
+def get_generation_provider() -> AIProvider:
+    """
+    The generation (answer-writing) model is freely swappable. Every other
+    piece of code calls this function - and get_embedding_provider() above -
+    and never imports a provider class directly.
+    """
+    provider_name = os.environ.get("GENERATION_PROVIDER", "gemini")
 
     if provider_name == "gemini":
         return GeminiProvider()
+    # if provider_name == "openai":
+    #     return OpenAIProvider()
 
-    raise ValueError(f"Unknown AI_PROVIDER: {provider_name}")
+    raise ValueError(f"Unknown GENERATION_PROVIDER: {provider_name}")
