@@ -2,6 +2,7 @@
 
 from django.urls import path
 from .views import (
+    AIUsageSummaryView,
     AgentReplyCreateView,
     CustomerMessageCreateView,
     CustomerTicketDetailView,
@@ -48,4 +49,5 @@ urlpatterns = [
         CustomerMessageCreateView.as_view(),
         name="customer-message-create",
     ),
+    path("ai-usage/", AIUsageSummaryView.as_view(), name="ai-usage-summary"),
 ]

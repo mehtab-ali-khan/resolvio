@@ -1,6 +1,7 @@
 # backend/app/serializers.py
 
 from rest_framework import serializers
+from decimal import Decimal
 
 from .models import Company, KnowledgeBaseArticle, Message, Ticket, User
 
@@ -102,7 +103,14 @@ class AgentMessageSerializer(serializers.ModelSerializer):
     Agent-facing message serializer. Includes is_internal and ai_confidence,
     since agents need to see AI drafts and how confident the AI was.
     Never reuse this serializer anywhere a customer could see the response.
+
+    cost sums this message's AIUsageLog rows in Python, not via .aggregate().
+    aggregate() always issues a fresh query even when ai_usage_logs was
+    already prefetched by the view - summing here in Python is what
+    actually makes the TicketDetailView prefetch worthwhile.
     """
+
+    cost = serializers.SerializerMethodField()
 
     class Meta:
         model = Message
@@ -112,8 +120,14 @@ class AgentMessageSerializer(serializers.ModelSerializer):
             "body",
             "is_internal",
             "ai_confidence",
+            "cost",
             "created_at",
         ]
+
+    def get_cost(self, obj):
+        logs = obj.ai_usage_logs.all()
+        total = sum((log.cost for log in logs), start=Decimal("0"))
+        return str(total) if logs else None
 
 
 class CustomerMessageSerializer(serializers.ModelSerializer):

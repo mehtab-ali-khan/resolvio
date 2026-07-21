@@ -18,8 +18,12 @@ from rest_framework.authtoken.models import Token
 from rest_framework.pagination import PageNumberPagination
 from rest_framework.throttling import AnonRateThrottle, UserRateThrottle
 from django.contrib.auth import authenticate
+from datetime import timedelta
+from django.db.models import Sum, Count
+from django.utils import timezone
+from django.db.models import Prefetch
 
-from .models import Ticket, KnowledgeBaseArticle
+from .models import Ticket, Message, KnowledgeBaseArticle, AIUsageLog
 from .serializers import (
     CustomerMessageSerializer,
     CustomerTicketDetailSerializer,
@@ -212,7 +216,12 @@ class TicketDetailView(RetrieveUpdateAPIView):
     def get_queryset(self):
         return Ticket.objects.filter(
             company=self.request.user.company
-        ).prefetch_related("messages")
+        ).prefetch_related(
+            Prefetch(
+                "messages",
+                queryset=Message.objects.prefetch_related("ai_usage_logs"),
+            )
+        )
 
     def get_serializer_class(self):
         return (
@@ -379,4 +388,60 @@ class CustomerMessageCreateView(CreateAPIView):
 
         return Response(
             CustomerMessageSerializer(message).data, status=status.HTTP_201_CREATED
+        )
+
+
+class AIUsageSummaryView(APIView):
+    """
+    Owner-only endpoint summarizing AI spend, grouped by model, over a
+    time window. Used for the admin pricing/usage dashboard.
+    """
+
+    permission_classes = [IsAuthenticated]
+
+    PERIOD_DAYS = {
+        "week": 7,
+        "month": 30,
+    }
+
+    def get(self, request):
+        if request.user.role != "owner":
+            return Response(
+                {"detail": "Only company owners can view AI usage summaries."},
+                status=403,
+            )
+
+        period = request.query_params.get("period", "week")
+        days = self.PERIOD_DAYS.get(period)
+        if days is None:
+            return Response(
+                {"detail": f"Invalid period '{period}'. Use 'week' or 'month'."},
+                status=400,
+            )
+
+        since = timezone.now() - timedelta(days=days)
+
+        rows = (
+            AIUsageLog.objects.filter(
+                company=request.user.company, created_at__gte=since
+            )
+            .values("model_name", "purpose")
+            .annotate(
+                total_cost=Sum("cost"),
+                call_count=Count("id"),
+                total_input_tokens=Sum("input_tokens"),
+                total_output_tokens=Sum("output_tokens"),
+            )
+            .order_by("-total_cost")
+        )
+
+        overall_total = sum(row["total_cost"] for row in rows) if rows else 0
+
+        return Response(
+            {
+                "period": period,
+                "since": since.isoformat(),
+                "overall_total_cost": str(overall_total),
+                "by_model": list(rows),
+            }
         )
