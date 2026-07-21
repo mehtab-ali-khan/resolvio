@@ -6,6 +6,12 @@ from app.models import AIModelPricing
 PRICES = [
     {
         "provider": AIModelPricing.Provider.GOOGLE,
+        "model_name": "gemini-2.5-flash-lite",
+        "input_price_per_1k": "0.0001",  # $0.10 per 1M input tokens
+        "output_price_per_1k": "0.0004",  # $0.40 per 1M output tokens
+    },
+    {
+        "provider": AIModelPricing.Provider.GOOGLE,
         "model_name": "gemini-2.5-flash",
         "input_price_per_1k": "0.0003",  # $0.30 per 1M input tokens
         "output_price_per_1k": "0.0025",  # $2.50 per 1M output tokens
