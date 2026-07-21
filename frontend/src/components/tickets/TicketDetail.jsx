@@ -5,19 +5,42 @@ import { createAgentReply, updateTicketStatus } from "../../api/tickets.js";
 import { Avatar, EmptyState } from "../shared/ui.jsx";
 import { StatusBadge, TICKET_STATUSES, statusLabels } from "./StatusBadge.jsx";
 
+function formatCost(cost) {
+    const n = Number(cost);
+    if (n === 0) return "$0";
+    if (n < 0.01) return `$${n.toFixed(6)}`;
+    return `$${n.toFixed(4)}`;
+}
+
+function CostTooltip({ cost }) {
+    return (
+        <div className="
+            absolute -top-2 left-1/2 -translate-x-1/2 -translate-y-full
+            bg-[var(--s)] text-white text-[11px] font-mono font-semibold
+            px-2.5 py-1.5 rounded-md whitespace-nowrap
+            opacity-0 group-hover:opacity-100
+            pointer-events-none transition-opacity duration-100
+            z-10
+        ">
+            {formatCost(cost)}
+            {/* small triangle pointing down at the message */}
+            <div className="absolute top-full left-1/2 -translate-x-1/2 border-4 border-transparent border-t-[var(--s)]" />
+        </div>
+    );
+}
+
 function MessageBubble({ msg, customerName }) {
     const isAgent = msg.sender_type === "agent";
     const isAi = msg.sender_type === "ai";
     const isInternalDraft = isAi && msg.is_internal;
     const fromTeam = isAgent || isAi;
+    const hasCost = isAi && msg.cost != null;
 
     const label = isAgent
         ? "You (agent)"
         : isAi
             ? (isInternalDraft ? "AI draft — internal only" : "AI Assistant")
             : customerName;
-
-    const costTitle = isAi && msg.cost != null ? `Cost: $${msg.cost}` : undefined;
 
     // Internal AI draft — dashed yellow border, agent eyes only
     if (isInternalDraft) {
@@ -26,11 +49,9 @@ function MessageBubble({ msg, customerName }) {
                 <span className="text-[10px] font-bold uppercase tracking-wider text-[var(--warning)] px-1">
                     {label}{msg.ai_confidence != null ? ` · ${Math.round(msg.ai_confidence)}% confident` : ""}
                 </span>
-                <div
-                    title={costTitle}
-                    className="max-w-[82%] px-4 py-3 text-sm leading-relaxed rounded-lg rounded-tr-sm border border-dashed border-[var(--warning)] bg-[var(--warning-soft)] text-[var(--s-mid)]"
-                >
+                <div className={`relative ${hasCost ? "group" : ""} max-w-[82%] px-4 py-3 text-sm leading-relaxed rounded-lg rounded-tr-sm border border-dashed border-[var(--warning)] bg-[var(--warning-soft)] text-[var(--s-mid)]`}>
                     {msg.body}
+                    {hasCost && <CostTooltip cost={msg.cost} />}
                 </div>
                 <span className="text-[10px] text-[var(--g-500)] px-1">
                     {new Date(msg.created_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
@@ -44,15 +65,14 @@ function MessageBubble({ msg, customerName }) {
             <span className={`text-[10px] font-bold uppercase tracking-wider px-1 ${fromTeam ? "text-[var(--p)]" : "text-[var(--g-600)]"}`}>
                 {label}
             </span>
-            <div
-                title={costTitle}
-                className={`max-w-[82%] px-4 py-3 text-sm leading-relaxed
-                    ${fromTeam
-                        ? "bg-white border border-[var(--g-300)] rounded-lg rounded-tr-sm shadow-[var(--shadow-sm)]"
-                        : "bg-[var(--g-200)] rounded-lg rounded-tl-sm text-[var(--s)]"
-                    }`}
+            <div className={`relative ${hasCost ? "group" : ""} max-w-[82%] px-4 py-3 text-sm leading-relaxed
+                ${fromTeam
+                    ? "bg-white border border-[var(--g-300)] rounded-lg rounded-tr-sm shadow-[var(--shadow-sm)]"
+                    : "bg-[var(--g-200)] rounded-lg rounded-tl-sm text-[var(--s)]"
+                }`}
             >
                 {msg.body}
+                {hasCost && <CostTooltip cost={msg.cost} />}
             </div>
             <span className="text-[10px] text-[var(--g-500)] px-1">
                 {new Date(msg.created_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
