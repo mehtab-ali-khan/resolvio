@@ -17,6 +17,8 @@ function MessageBubble({ msg, customerName }) {
             ? (isInternalDraft ? "AI draft — internal only" : "AI Assistant")
             : customerName;
 
+    const costTitle = isAi && msg.cost != null ? `Cost: $${msg.cost}` : undefined;
+
     // Internal AI draft — dashed yellow border, agent eyes only
     if (isInternalDraft) {
         return (
@@ -24,7 +26,10 @@ function MessageBubble({ msg, customerName }) {
                 <span className="text-[10px] font-bold uppercase tracking-wider text-[var(--warning)] px-1">
                     {label}{msg.ai_confidence != null ? ` · ${Math.round(msg.ai_confidence)}% confident` : ""}
                 </span>
-                <div className="max-w-[82%] px-4 py-3 text-sm leading-relaxed rounded-lg rounded-tr-sm border border-dashed border-[var(--warning)] bg-[var(--warning-soft)] text-[var(--s-mid)]">
+                <div
+                    title={costTitle}
+                    className="max-w-[82%] px-4 py-3 text-sm leading-relaxed rounded-lg rounded-tr-sm border border-dashed border-[var(--warning)] bg-[var(--warning-soft)] text-[var(--s-mid)]"
+                >
                     {msg.body}
                 </div>
                 <span className="text-[10px] text-[var(--g-500)] px-1">
@@ -39,13 +44,13 @@ function MessageBubble({ msg, customerName }) {
             <span className={`text-[10px] font-bold uppercase tracking-wider px-1 ${fromTeam ? "text-[var(--p)]" : "text-[var(--g-600)]"}`}>
                 {label}
             </span>
-            <div className={`max-w-[82%] px-4 py-3 text-sm leading-relaxed
-                ${fromTeam
-                    // Agent/AI — white bubble with blue border, same as chat widget
-                    ? "bg-white border border-[var(--g-300)] rounded-lg rounded-tr-sm shadow-[var(--shadow-sm)]"
-                    // Customer — light grey bubble, same as chat widget
-                    : "bg-[var(--g-200)] rounded-lg rounded-tl-sm text-[var(--s)]"
-                }`}
+            <div
+                title={costTitle}
+                className={`max-w-[82%] px-4 py-3 text-sm leading-relaxed
+                    ${fromTeam
+                        ? "bg-white border border-[var(--g-300)] rounded-lg rounded-tr-sm shadow-[var(--shadow-sm)]"
+                        : "bg-[var(--g-200)] rounded-lg rounded-tl-sm text-[var(--s)]"
+                    }`}
             >
                 {msg.body}
             </div>
@@ -55,7 +60,6 @@ function MessageBubble({ msg, customerName }) {
         </div>
     );
 }
-
 export function TicketDetail({ ticket, isLoading, onStatusUpdated, onClose }) {
     const [reply, setReply] = useState("");
     const [error, setError] = useState("");

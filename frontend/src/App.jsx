@@ -9,6 +9,7 @@ import { Signup } from "./components/Signup.jsx";
 import { TicketsPage } from "./pages/TicketsPage.jsx";
 import { KnowledgeBasePage } from "./pages/KnowledgeBasePage.jsx";
 import { WidgetSetupPage } from "./pages/WidgetSetupPage.jsx";
+import { AiUsagePage } from "./pages/AiUsagePage.jsx";
 
 export default function App() {
   return (
@@ -25,6 +26,7 @@ export default function App() {
             <Route path="/tickets" element={<TicketsPage />} />
             <Route path="/knowledge-base" element={<KnowledgeBasePage />} />
             <Route path="/widget-setup" element={<WidgetSetupPage />} />
+            <Route path="/ai-usage" element={<AiUsagePage />} />
           </Route>
         </Route>
 

@@ -141,3 +141,9 @@ export async function createCustomerMessage(accessToken, payload) {
     body: JSON.stringify(payload),
   });
 }
+
+// ─── Ai Usage ─────────────────
+
+export async function getAiUsageSummary(period = "week") {
+  return apiFetch(`/api/ai-usage/?period=${period}`, {}, true);
+}
