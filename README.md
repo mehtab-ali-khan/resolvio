@@ -1,4 +1,4 @@
-# Nexus Support AI
+# RESOLVIO
 
 A modern customer support platform that manages support tickets with real-time chat, AI-powered assistance, and a dedicated agent dashboard.
 
@@ -21,7 +21,7 @@ A modern customer support platform that manages support tickets with real-time c
 
 ## Overview
 
-**Nexus Support AI** is a complete customer support solution that connects customers with support agents through an intuitive interface. Customers submit issues via an embeddable chat widget, agents respond through a real-time dashboard, and AI-powered features help generate contextual responses using a company knowledge base.
+**RESOLVIO** is a complete customer support solution that connects customers with support agents through an intuitive interface. Customers submit issues via an embeddable chat widget, agents respond through a real-time dashboard, and AI-powered features help generate contextual responses using a company knowledge base.
 
 **Key Components:**
 1. **Embeddable Widget** – Chat interface for customer websites
@@ -70,7 +70,7 @@ A modern customer support platform that manages support tickets with real-time c
 
 ### Customer Flow
 
-1. **Widget Load** – Customer's website loads the Nexus widget script
+1. **Widget Load** – Customer's website loads the resolvio widget script
 2. **Submit Ticket** – Customer enters name, email, issue details, category, and priority
 3. **Ticket Created** – Backend automatically creates a Ticket and first Message
 4. **Chat Continues** – Customer can add more messages to the same conversation
@@ -177,7 +177,7 @@ Context for AI Responses
 ## Project Structure
 
 ```
-nexus-support-ai/
+resolvio/
 ├── backend/                          # Django REST API backend
 │   ├── core/                         # Django project configuration
 │   │   ├── settings.py               # Database, apps, middleware config
