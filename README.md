@@ -2,7 +2,7 @@
 
 A modern customer support platform that manages support tickets with real-time chat, AI-powered assistance, and a dedicated agent dashboard.
 
-**Live App:** [nexus-support-ai.vercel.app](https://nexus-support-ai.vercel.app)
+**Live App:** [resolvio.dev](https://resolvio.dev)
 
 ---
 
@@ -336,7 +336,7 @@ Response 201:
 
 **Connect to Ticket Updates**
 ```javascript
-const ws = new WebSocket('wss://api.nexus-support-ai.com/ws/tickets/42/?token=<auth_token>');
+const ws = new WebSocket('wss://api.resolvio.dev/ws/tickets/42/?token=<auth_token>');
 ```
 
 **Message Format**
@@ -501,7 +501,7 @@ Company (1) ─── (many) User
 
 ```
 1. Customer visits example.com
-2. Widget loads from Vercel CDN
+2. Widget loads from resolvio.dev CDN
 3. Customer types issue and clicks "Send"
 4. Widget validates form, embeds company API key
 5. POST /api/tickets/ creates ticket in database
@@ -535,4 +535,4 @@ Report issues, request features, or submit PRs on GitHub.
 
 ---
 
-**Live:** [nexus-support-ai.vercel.app](https://nexus-support-ai.vercel.app)
+**Live:** [resolvio.dev](https://resolvio.dev)
