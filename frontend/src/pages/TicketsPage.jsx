@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { getTicketById, getToken, listTickets } from "../api/tickets.js";
 import { useWebSocket } from "../hooks/useWebSocket.js";
-import { Avatar, EmptyState } from "../components/shared/ui.jsx";
+import { Avatar, EmptyState, formatDateTime } from "../components/shared/ui.jsx";
 import { NewBadge, StatusBadge } from "../components/tickets/StatusBadge.jsx";
 import { TicketDetail } from "../components/tickets/TicketDetail.jsx";
 
@@ -273,7 +273,7 @@ export function TicketsPage() {
                                             </div>
                                         </div>
                                         <p className="text-[11px] text-[var(--g-500)] mt-0.5">
-                                            {new Date(ticket.created_at).toLocaleString()}
+                                            {formatDateTime(ticket.created_at)}
                                         </p>
                                     </div>
                                 </button>

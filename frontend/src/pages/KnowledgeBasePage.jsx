@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { createArticle, deleteArticle, listArticles, updateArticle } from "../api/knowledgeBase.js";
-import { EmptyState } from "../components/shared/ui.jsx";
+import { EmptyState, formatDateTime } from "../components/shared/ui.jsx";
 
 function IndexStatusBadge({ status }) {
     const isReady = status === "ready";
@@ -163,7 +163,7 @@ export function KnowledgeBasePage() {
                                         {article.title}
                                     </p>
                                     <p className="text-xs text-[var(--g-500)] mt-0.5">
-                                        {new Date(article.updated_at).toLocaleString()}
+                                        {formatDateTime(article.created_at)}
                                     </p>
                                 </div>
                                 <IndexStatusBadge status={article.index_status} />

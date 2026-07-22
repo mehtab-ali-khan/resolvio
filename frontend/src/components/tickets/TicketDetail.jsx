@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { createAgentReply, updateTicketStatus } from "../../api/tickets.js";
-import { Avatar, EmptyState } from "../shared/ui.jsx";
+import { Avatar, EmptyState, formatDate } from "../shared/ui.jsx";
 import { StatusBadge, TICKET_STATUSES, statusLabels } from "./StatusBadge.jsx";
 
 function formatCost(cost) {
@@ -175,7 +175,7 @@ export function TicketDetail({ ticket, isLoading, onStatusUpdated, onClose }) {
                         Ticket #{ticket.id}
                     </p>
                     <p className="text-xs text-[var(--g-600)] truncate">
-                        {messageCount} {messageCount === 1 ? "message" : "messages"} · Started {new Date(ticket.created_at).toLocaleDateString([], { month: "short", day: "numeric" })}
+                        {messageCount} {messageCount === 1 ? "message" : "messages"} · Started {formatDate(ticket.created_at)}
                     </p>
                 </div>
 

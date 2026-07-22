@@ -74,3 +74,19 @@ export function EmptyState({ icon, title, body }) {
         </div>
     );
 }
+
+export function formatDate(dateString) {
+    return new Date(dateString).toLocaleDateString("en-GB", {
+        day: "numeric",
+        month: "long",
+        year: "numeric",
+    });
+}
+
+// Same, but also includes the time — e.g. "7 August 2026, 10:23 AM"
+export function formatDateTime(dateString) {
+    const date = new Date(dateString);
+    const datePart = formatDate(dateString);
+    const timePart = date.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+    return `${datePart}, ${timePart}`;
+}
