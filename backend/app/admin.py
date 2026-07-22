@@ -20,9 +20,20 @@ from .models import (
 
 @admin.register(Ticket)
 class TicketAdmin(admin.ModelAdmin):
-    list_display = ("id", "customer_name", "customer_email", "status", "created_at")
+    list_display = ("id", "message_preview", "status", "created_at")
     list_filter = ("status",)
-    search_fields = ("customer_name", "customer_email")
+    search_fields = ("messages__body",)
+
+    def message_preview(self, ticket):
+        first_message = ticket.messages.filter(
+            sender_type=Message.SenderType.CUSTOMER
+        ).first()
+        if not first_message:
+            return "(no messages)"
+        body = first_message.body.strip()
+        return body[:60] + "…" if len(body) > 60 else body
+
+    message_preview.short_description = "Message"
 
 
 @admin.register(Message)
