@@ -85,8 +85,6 @@ class Ticket(models.Model):
         on_delete=models.CASCADE,
     )
     access_token = models.UUIDField(default=uuid.uuid4, unique=True, editable=False)
-    customer_name = models.CharField(max_length=120)
-    customer_email = models.EmailField()
     status = models.CharField(
         max_length=20,
         choices=Status.choices,

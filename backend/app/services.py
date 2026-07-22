@@ -43,32 +43,13 @@ def _push_to_widget(ticket_id, data):
     )
 
 
-def create_ticket_with_message(*, company, customer_name, customer_email, message):
-    customer_name = customer_name.strip()
-    customer_email = customer_email.strip()
+def create_ticket_with_message(*, company, message):
     message = message.strip()
 
-    logger.info(
-        "Creating ticket: company_id=%s customer_email=%s",
-        company.id,
-        customer_email,
-    )
+    logger.info("Creating ticket: company_id=%s", company.id)
 
     with transaction.atomic():
-        ticket = (
-            Ticket.objects.filter(company=company, customer_email=customer_email)
-            .order_by("-created_at")
-            .first()
-        )
-
-        is_new_ticket = ticket is None
-
-        if is_new_ticket:
-            ticket = Ticket.objects.create(
-                company=company,
-                customer_name=customer_name,
-                customer_email=customer_email,
-            )
+        ticket = Ticket.objects.create(company=company)
 
         customer_message = Message.objects.create(
             ticket=ticket,
@@ -76,18 +57,14 @@ def create_ticket_with_message(*, company, customer_name, customer_email, messag
             body=message,
         )
 
-    logger.info(
-        "Customer message stored: ticket_id=%s is_new_ticket=%s",
-        ticket.id,
-        is_new_ticket,
-    )
+    logger.info("Customer message stored: ticket_id=%s", ticket.id)
 
     _push_to_agents(
         company.id,
         {
             "type": "ticket_update",
             "ticket_id": ticket.id,
-            "is_new_ticket": is_new_ticket,
+            "is_new_ticket": True,
         },
     )
 

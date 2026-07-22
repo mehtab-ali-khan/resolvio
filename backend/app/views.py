@@ -182,23 +182,15 @@ class TicketListCreateView(ListCreateAPIView):
         try:
             ticket = create_ticket_with_message(
                 company=validated_data["api_key"],
-                customer_name=validated_data["customer_name"],
-                customer_email=validated_data["customer_email"],
                 message=validated_data["message"],
             )
         except Exception:
             logger.exception(
-                "Ticket creation failed for customer_email=%s",
-                validated_data.get("customer_email"),
+                "Ticket creation failed for company_id=%s", validated_data["api_key"].id
             )
             raise
 
-        logger.info(
-            "Ticket created: ticket_id=%s customer_email=%s is_new=%s",
-            ticket.id,
-            validated_data["customer_email"],
-            ticket.is_new,
-        )
+        logger.info("Ticket created: ticket_id=%s is_new=%s", ticket.id, ticket.is_new)
 
         return Response(
             {
