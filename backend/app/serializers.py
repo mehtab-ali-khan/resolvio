@@ -5,6 +5,31 @@ from decimal import Decimal
 
 from .models import Company, KnowledgeBaseArticle, Message, Ticket, User
 
+# ─── Ticket Preview ────────────────────────────────────────────────────────────────────
+
+PREVIEW_LENGTH = 60
+
+
+def get_message_preview(ticket):
+    """
+    Returns the first customer message's body, truncated for list/detail display.
+    """
+    first_customer_message = next(
+        (
+            m
+            for m in ticket.messages.all()
+            if m.sender_type == Message.SenderType.CUSTOMER
+        ),
+        None,
+    )
+    if not first_customer_message:
+        return ""
+    body = first_customer_message.body.strip()
+    if len(body) <= PREVIEW_LENGTH:
+        return body
+    return body[:PREVIEW_LENGTH].rstrip() + "…"
+
+
 # ─── Auth ────────────────────────────────────────────────────────────────────
 
 
@@ -72,12 +97,13 @@ class TicketCreateSerializer(serializers.Serializer):
 
 
 class TicketListSerializer(serializers.ModelSerializer):
+    message_preview = serializers.SerializerMethodField()
+
     class Meta:
         model = Ticket
         fields = [
             "id",
-            "customer_name",
-            "customer_email",
+            "message_preview",
             "status",
             "priority",
             "category",
@@ -85,6 +111,9 @@ class TicketListSerializer(serializers.ModelSerializer):
             "created_at",
             "updated_at",
         ]
+
+    def get_message_preview(self, ticket):
+        return get_message_preview(ticket)
 
 
 class TicketUpdateSerializer(serializers.ModelSerializer):
@@ -144,13 +173,13 @@ class AgentTicketDetailSerializer(serializers.ModelSerializer):
     """Agent-facing ticket detail. Shows every message, including internal AI drafts."""
 
     messages = AgentMessageSerializer(many=True, read_only=True)
+    message_preview = serializers.SerializerMethodField()
 
     class Meta:
         model = Ticket
         fields = [
             "id",
-            "customer_name",
-            "customer_email",
+            "message_preview",
             "status",
             "priority",
             "category",
@@ -158,6 +187,9 @@ class AgentTicketDetailSerializer(serializers.ModelSerializer):
             "created_at",
             "messages",
         ]
+
+    def get_message_preview(self, ticket):
+        return get_message_preview(ticket)
 
 
 class CustomerTicketDetailSerializer(serializers.ModelSerializer):
