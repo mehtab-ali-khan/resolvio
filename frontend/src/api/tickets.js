@@ -4,7 +4,7 @@ const API_BASE = import.meta.env.VITE_API_URL || "http://localhost:8000";
 
 // ─── Token helper ──────────────────────────────────────────────────────────
 
-const TOKEN_KEY = "nexus_token";
+const TOKEN_KEY = "resolvio_token";
 
 export function getToken() {
   return localStorage.getItem(TOKEN_KEY);
