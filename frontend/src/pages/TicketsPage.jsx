@@ -40,7 +40,6 @@ export function TicketsPage() {
     const token = getToken();
     const wsUrl = token ? `${WS_BASE}/ws/agent/?token=${token}` : null;
 
-    // Debounce — wait until user stops typing before sending search to backend
     useEffect(() => {
         const timer = setTimeout(() => setDebouncedSearch(search.trim()), SEARCH_DEBOUNCE_MS);
         return () => clearTimeout(timer);
@@ -196,7 +195,7 @@ export function TicketsPage() {
                         <input
                             value={search}
                             onChange={e => setSearch(e.target.value)}
-                            placeholder="Search by name, email, or message…"
+                            placeholder="Search by message…"
                             className="flex-1 text-sm text-[var(--s)] placeholder-[var(--g-500)] bg-transparent outline-none"
                         />
                         {search && (
@@ -262,20 +261,17 @@ export function TicketsPage() {
                                             : "hover:bg-[var(--g-100)] border-l-transparent"
                                         }`}
                                 >
-                                    <Avatar name={ticket.customer_name} />
+                                    <Avatar name="Customer" />
                                     <div className="flex-1 min-w-0">
                                         <div className="flex items-center justify-between gap-2 mb-0.5">
                                             <span className={`text-sm truncate ${ticket.is_new ? "font-bold" : "font-semibold"} text-[var(--s)]`}>
-                                                {ticket.customer_name}
+                                                {ticket.message_preview || "New conversation"}
                                             </span>
                                             <div className="flex items-center gap-1.5 flex-shrink-0">
                                                 {ticket.is_new && <NewBadge />}
                                                 <StatusBadge status={ticket.status} />
                                             </div>
                                         </div>
-                                        <p className="text-xs text-[var(--g-600)] truncate">
-                                            {ticket.customer_email}
-                                        </p>
                                         <p className="text-[11px] text-[var(--g-500)] mt-0.5">
                                             {new Date(ticket.created_at).toLocaleString()}
                                         </p>

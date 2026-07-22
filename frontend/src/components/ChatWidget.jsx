@@ -4,12 +4,9 @@ import { useEffect, useRef, useState } from "react";
 import { createCustomerMessage, createTicket, getTicketByToken } from "../api/tickets.js";
 import { useWebSocket } from "../hooks/useWebSocket.js";
 
-const STORAGE_KEY = "nexus_ticket_token";
+const STORAGE_KEY = "resolvio_ticket_token";
 
 // ─── Styles ───────────────────────────────────────────────────────────────────
-// The widget defines its own theme variables so it stays self-contained
-// while matching the app's shared color system.
-
 const styles = `
   #nexus-widget-root {
     --nw-p: #1d9e6d;
@@ -122,11 +119,8 @@ function getSenderLabel(senderType) {
   return "You";
 }
 
-const initialForm = { customer_name: "", customer_email: "", message: "" };
-
 // ─── Small reusable pieces ────────────────────────────────────────────────────
 
-// The round header button (minimize, maximize, close)
 function HeaderBtn({ onClick, label, children }) {
   return (
     <button
@@ -150,7 +144,6 @@ function HeaderBtn({ onClick, label, children }) {
   );
 }
 
-// A single message bubble
 function MessageBubble({ msg }) {
   const fromTeam = isFromTeam(msg.sender_type);
   const senderLabel = getSenderLabel(msg.sender_type);
@@ -202,7 +195,7 @@ export function ChatWidget({ apiKey }) {
   const [chatState, setChatState] = useState("closed");
   const [isLoadingTicket, setIsLoadingTicket] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [form, setForm] = useState(initialForm);
+  const [firstMessage, setFirstMessage] = useState("");
   const [accessToken, setAccessToken] = useState(null);
   const [messages, setMessages] = useState([]);
   const [newMessage, setNewMessage] = useState("");
@@ -210,6 +203,7 @@ export function ChatWidget({ apiKey }) {
   const [unread, setUnread] = useState(0);
   const messagesEndRef = useRef(null);
   const textareaRef = useRef(null);
+  const firstMessageRef = useRef(null);
 
   const WS_BASE = import.meta.env.VITE_WS_URL || "ws://localhost:8000";
   const wsUrl = accessToken ? `${WS_BASE}/ws/widget/${accessToken}/` : null;
@@ -245,9 +239,15 @@ export function ChatWidget({ apiKey }) {
     if (chatState !== "closed") setUnread(0);
   }, [chatState]);
 
-  // Auto-grow the textarea as the user types — up to 5 lines
   function handleTextareaInput(e) {
     setNewMessage(e.target.value);
+    const ta = e.target;
+    ta.style.height = "auto";
+    ta.style.height = Math.min(ta.scrollHeight, 120) + "px";
+  }
+
+  function handleFirstMessageInput(e) {
+    setFirstMessage(e.target.value);
     const ta = e.target;
     ta.style.height = "auto";
     ta.style.height = Math.min(ta.scrollHeight, 120) + "px";
@@ -269,20 +269,30 @@ export function ChatWidget({ apiKey }) {
 
   async function submitTicket(e) {
     e.preventDefault();
+    if (isSubmitting || !firstMessage.trim()) return;
     setError("");
     setIsSubmitting(true);
     try {
-      const created = await createTicket({ ...form, api_key: apiKey });
+      const created = await createTicket({ message: firstMessage, api_key: apiKey });
       const token = created.access_token;
       localStorage.setItem(STORAGE_KEY, token);
       setAccessToken(token);
       const ticket = await getTicketByToken(token);
       setMessages(ticket.messages);
-      setForm(initialForm);
+      setFirstMessage("");
+      if (firstMessageRef.current) firstMessageRef.current.style.height = "auto";
     } catch {
       setError("Something went wrong. Please try again.");
     } finally {
       setIsSubmitting(false);
+    }
+  }
+
+  // Send first-message form on Enter, new line on Shift+Enter
+  function handleFirstMessageKeyDown(e) {
+    if (e.key === "Enter" && !e.shiftKey) {
+      e.preventDefault();
+      submitTicket(e);
     }
   }
 
@@ -304,7 +314,6 @@ export function ChatWidget({ apiKey }) {
     }
   }
 
-  // Send on Enter key, new line on Shift+Enter
   function handleKeyDown(e) {
     if (e.key === "Enter" && !e.shiftKey) {
       e.preventDefault();
@@ -365,9 +374,7 @@ export function ChatWidget({ apiKey }) {
       background: "#ffffff",
       flexShrink: 0,
     }}>
-      {/* Left side — company/product name */}
       <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
-        {/* Small dark icon */}
         <div style={{
           width: "32px", height: "32px", borderRadius: "8px",
           background: "var(--nw-gradient)",
@@ -385,7 +392,6 @@ export function ChatWidget({ apiKey }) {
         </div>
       </div>
 
-      {/* Right side — action buttons */}
       <div style={{ display: "flex", gap: "2px" }}>
         {chatState === "maximized" && (
           <HeaderBtn onClick={() => setChatState("minimized")} label="Minimize">
@@ -422,7 +428,6 @@ export function ChatWidget({ apiKey }) {
   const body = (
     <div style={{ display: "flex", flexDirection: "column", flex: 1, overflow: "hidden" }}>
 
-      {/* Loading dots */}
       {isLoadingTicket && (
         <div style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", gap: "6px" }}>
           <span className="nw-dot" />
@@ -431,69 +436,26 @@ export function ChatWidget({ apiKey }) {
         </div>
       )}
 
-      {/* New ticket form */}
+      {/* New conversation — just one message box, no name/email */}
       {!isLoadingTicket && !accessToken && (
         <form
           onSubmit={submitTicket}
-          style={{ flex: 1, overflowY: "auto", padding: "20px", display: "flex", flexDirection: "column", gap: "14px" }}
+          style={{ flex: 1, display: "flex", flexDirection: "column", padding: "20px", gap: "14px" }}
         >
           <p style={{ fontSize: "13px", color: "var(--nw-g-600)", lineHeight: 1.6 }}>
             Send us a message and we'll get back to you as soon as possible.
           </p>
 
-          {/* Name field */}
-          <div style={{ display: "flex", flexDirection: "column", gap: "5px" }}>
-            <label style={{ fontSize: "12px", fontWeight: "600", color: "#374151" }}>Name</label>
-            <input
-              name="customer_name"
-              type="text"
-              value={form.customer_name}
-              placeholder="Your name"
-              required
-              onChange={e => setForm({ ...form, customer_name: e.target.value })}
-              style={{
-                padding: "9px 12px", borderRadius: "8px",
-                border: "1px solid var(--nw-g-300)",
-                fontSize: "14px", color: "var(--nw-s)",
-                background: "var(--nw-g-100)", outline: "none",
-                transition: "border-color 0.15s",
-              }}
-              onFocus={e => (e.target.style.borderColor = "var(--nw-s)")}
-              onBlur={e => (e.target.style.borderColor = "var(--nw-g-300)")}
-            />
-          </div>
-
-          {/* Email field */}
-          <div style={{ display: "flex", flexDirection: "column", gap: "5px" }}>
-            <label style={{ fontSize: "12px", fontWeight: "600", color: "#374151" }}>Email</label>
-            <input
-              name="customer_email"
-              type="email"
-              value={form.customer_email}
-              placeholder="you@example.com"
-              required
-              onChange={e => setForm({ ...form, customer_email: e.target.value })}
-              style={{
-                padding: "9px 12px", borderRadius: "8px",
-                border: "1px solid var(--nw-g-300)",
-                fontSize: "14px", color: "var(--nw-s)",
-                background: "var(--nw-g-100)", outline: "none",
-                transition: "border-color 0.15s",
-              }}
-              onFocus={e => (e.target.style.borderColor = "var(--nw-s)")}
-              onBlur={e => (e.target.style.borderColor = "var(--nw-g-300)")}
-            />
-          </div>
-
-          {/* Message field */}
-          <div style={{ display: "flex", flexDirection: "column", gap: "5px" }}>
+          <div style={{ display: "flex", flexDirection: "column", gap: "5px", flex: 1 }}>
             <label style={{ fontSize: "12px", fontWeight: "600", color: "#374151" }}>Message</label>
             <textarea
-              value={form.message}
+              ref={firstMessageRef}
+              value={firstMessage}
               required
               rows={4}
               placeholder="How can we help you?"
-              onChange={e => setForm({ ...form, message: e.target.value })}
+              onChange={handleFirstMessageInput}
+              onKeyDown={handleFirstMessageKeyDown}
               style={{
                 padding: "9px 12px", borderRadius: "8px",
                 border: "1px solid var(--nw-g-300)",
@@ -502,6 +464,7 @@ export function ChatWidget({ apiKey }) {
                 resize: "vertical", lineHeight: 1.5,
                 transition: "border-color 0.15s",
                 fontFamily: "inherit",
+                maxHeight: "160px",
               }}
               onFocus={e => (e.target.style.borderColor = "var(--nw-s)")}
               onBlur={e => (e.target.style.borderColor = "var(--nw-g-300)")}
@@ -514,13 +477,13 @@ export function ChatWidget({ apiKey }) {
 
           <button
             type="submit"
-            disabled={isSubmitting}
+            disabled={isSubmitting || !firstMessage.trim()}
             style={{
               padding: "11px 16px", borderRadius: "8px",
               background: "var(--nw-p)", color: "white",
               fontSize: "14px", fontWeight: "600",
               border: "none", cursor: isSubmitting ? "wait" : "pointer",
-              opacity: isSubmitting ? 0.6 : 1,
+              opacity: isSubmitting || !firstMessage.trim() ? 0.6 : 1,
               transition: "opacity 0.15s",
             }}
           >
@@ -532,7 +495,6 @@ export function ChatWidget({ apiKey }) {
       {/* Conversation view */}
       {!isLoadingTicket && accessToken && (
         <>
-          {/* Messages area — scrollable */}
           <div
             className="nw-scroll"
             style={{
@@ -556,7 +518,6 @@ export function ChatWidget({ apiKey }) {
             <div ref={messagesEndRef} />
           </div>
 
-          {/* Reply box — pinned to bottom */}
           <div style={{
             padding: "10px 12px",
             background: "#ffffff",
@@ -567,7 +528,6 @@ export function ChatWidget({ apiKey }) {
               <p style={{ fontSize: "12px", color: "var(--danger, #dc2626)", marginBottom: "8px" }}>{error}</p>
             )}
 
-            {/* Input row — textarea + send button together in one box */}
             <div style={{
               display: "flex",
               alignItems: "center",
@@ -606,7 +566,6 @@ export function ChatWidget({ apiKey }) {
                 }}
               />
 
-              {/* Send button — sits inside the input box */}
               <button
                 type="button"
                 onClick={submitMessage}
@@ -635,8 +594,6 @@ export function ChatWidget({ apiKey }) {
                 )}
               </button>
             </div>
-
-
           </div>
         </>
       )}
