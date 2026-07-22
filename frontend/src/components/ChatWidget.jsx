@@ -159,7 +159,9 @@ function MessageBubble({ msg }) {
       className="nw-msg"
       style={{
         display: "flex",
-        justifyContent: fromTeam ? "flex-start" : "flex-end",
+        flexDirection: "column",
+        alignItems: fromTeam ? "flex-start" : "flex-end",
+        gap: "3px",
       }}
     >
       <div style={{
@@ -185,6 +187,11 @@ function MessageBubble({ msg }) {
         </div>
         {msg.body}
       </div>
+      {msg.created_at && (
+        <span style={{ fontSize: "10px", color: "var(--nw-g-500)", padding: "0 4px" }}>
+          {new Date(msg.created_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+        </span>
+      )}
     </div>
   );
 }
