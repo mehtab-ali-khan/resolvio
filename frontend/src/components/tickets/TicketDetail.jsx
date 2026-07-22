@@ -12,20 +12,16 @@ function formatCost(cost) {
     return `$${n.toFixed(4)}`;
 }
 
-function CostTooltip({ cost }) {
+function SwapLabel({ label, cost, colorClass }) {
     return (
-        <div className="
-            absolute -top-2 left-1/2 -translate-x-1/2 -translate-y-full
-            bg-[var(--s)] text-white text-[11px] font-mono font-semibold
-            px-2.5 py-1.5 rounded-md whitespace-nowrap
-            opacity-0 group-hover:opacity-100
-            pointer-events-none transition-opacity duration-100
-            z-10
-        ">
-            {formatCost(cost)}
-            {/* small triangle pointing down at the message */}
-            <div className="absolute top-full left-1/2 -translate-x-1/2 border-4 border-transparent border-t-[var(--s)]" />
-        </div>
+        <span className={`group/label relative inline-grid text-[10px] font-bold uppercase tracking-wider ${colorClass} overflow-hidden align-top`}>
+            <span className="col-start-1 row-start-1 whitespace-nowrap transition-all duration-300 ease-out group-hover/label:-translate-x-full group-hover/label:opacity-0">
+                {label}
+            </span>
+            <span className="col-start-1 row-start-1 whitespace-nowrap normal-case font-mono translate-x-full opacity-0 transition-all duration-300 ease-out group-hover/label:translate-x-0 group-hover/label:opacity-100">
+                {formatCost(cost)}
+            </span>
+        </span>
     );
 }
 
@@ -34,7 +30,7 @@ function MessageBubble({ msg, customerName }) {
     const isAi = msg.sender_type === "ai";
     const isInternalDraft = isAi && msg.is_internal;
     const fromTeam = isAgent || isAi;
-    const hasCost = isAi && msg.cost != null;
+    const hasCost = msg.cost != null;
 
     const label = isAgent
         ? "You (agent)"
@@ -46,12 +42,20 @@ function MessageBubble({ msg, customerName }) {
     if (isInternalDraft) {
         return (
             <div className="flex flex-col items-end gap-1">
-                <span className="text-[10px] font-bold uppercase tracking-wider text-[var(--warning)] px-1">
-                    {label}{msg.ai_confidence != null ? ` · ${Math.round(msg.ai_confidence)}% confident` : ""}
+                <span className="text-[10px] font-bold uppercase tracking-wider text-[var(--warning)] px-1 flex items-center gap-1.5">
+                    {hasCost ? (
+                        <SwapLabel label={label} cost={msg.cost} colorClass="text-[var(--warning)]" />
+                    ) : (
+                        label
+                    )}
+                    {msg.ai_confidence != null && (
+                        <span className="normal-case font-semibold opacity-80">
+                            · {Math.round(msg.ai_confidence)}% confident
+                        </span>
+                    )}
                 </span>
-                <div className={`relative ${hasCost ? "group" : ""} max-w-[82%] px-4 py-3 text-sm leading-relaxed rounded-lg rounded-tr-sm border border-dashed border-[var(--warning)] bg-[var(--warning-soft)] text-[var(--s-mid)]`}>
+                <div className="max-w-[82%] px-4 py-3 text-sm leading-relaxed rounded-lg rounded-tr-sm border border-dashed border-[var(--warning)] bg-[var(--warning-soft)] text-[var(--s-mid)]">
                     {msg.body}
-                    {hasCost && <CostTooltip cost={msg.cost} />}
                 </div>
                 <span className="text-[10px] text-[var(--g-500)] px-1">
                     {new Date(msg.created_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
@@ -62,17 +66,20 @@ function MessageBubble({ msg, customerName }) {
 
     return (
         <div className={`flex flex-col gap-1 ${fromTeam ? "items-end" : "items-start"}`}>
-            <span className={`text-[10px] font-bold uppercase tracking-wider px-1 ${fromTeam ? "text-[var(--p)]" : "text-[var(--g-600)]"}`}>
-                {label}
+            <span className={`px-1 ${fromTeam ? "text-[var(--p)]" : "text-[var(--g-600)]"}`}>
+                {hasCost ? (
+                    <SwapLabel label={label} cost={msg.cost} colorClass={fromTeam ? "text-[var(--p)]" : "text-[var(--g-600)]"} />
+                ) : (
+                    <span className="text-[10px] font-bold uppercase tracking-wider">{label}</span>
+                )}
             </span>
-            <div className={`relative ${hasCost ? "group" : ""} max-w-[82%] px-4 py-3 text-sm leading-relaxed
+            <div className={`max-w-[82%] px-4 py-3 text-sm leading-relaxed
                 ${fromTeam
                     ? "bg-white border border-[var(--g-300)] rounded-lg rounded-tr-sm shadow-[var(--shadow-sm)]"
                     : "bg-[var(--g-200)] rounded-lg rounded-tl-sm text-[var(--s)]"
                 }`}
             >
                 {msg.body}
-                {hasCost && <CostTooltip cost={msg.cost} />}
             </div>
             <span className="text-[10px] text-[var(--g-500)] px-1">
                 {new Date(msg.created_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
@@ -230,7 +237,7 @@ export function TicketDetail({ ticket, isLoading, onStatusUpdated, onClose }) {
             {/* ── Messages ── */}
             <div
                 ref={messagesContainerRef}
-                className="flex-1 px-5 py-4 overflow-y-auto max-h-[calc(100vh-320px)] min-h-48 flex flex-col gap-3 bg-[var(--g-100)]"
+                className="flex-1 px-5 py-4 overflow-y-auto max-h-[calc(100vh-300px)] min-h-48 flex flex-col gap-3 bg-[var(--g-100)]"
             >
                 {ticket.messages?.length === 0 && (
                     <EmptyState icon="💬" title="No messages yet" body="The customer has not sent any messages." />
