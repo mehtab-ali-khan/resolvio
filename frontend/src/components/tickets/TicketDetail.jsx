@@ -25,7 +25,7 @@ function SwapLabel({ label, cost, colorClass }) {
     );
 }
 
-function MessageBubble({ msg, customerName }) {
+function MessageBubble({ msg }) {
     const isAgent = msg.sender_type === "agent";
     const isAi = msg.sender_type === "ai";
     const isInternalDraft = isAi && msg.is_internal;
@@ -36,7 +36,7 @@ function MessageBubble({ msg, customerName }) {
         ? "You (agent)"
         : isAi
             ? (isInternalDraft ? "AI draft — internal only" : "AI Assistant")
-            : customerName;
+            : "Customer";
 
     // Internal AI draft — dashed yellow border, agent eyes only
     if (isInternalDraft) {
@@ -87,6 +87,7 @@ function MessageBubble({ msg, customerName }) {
         </div>
     );
 }
+
 export function TicketDetail({ ticket, isLoading, onStatusUpdated, onClose }) {
     const [reply, setReply] = useState("");
     const [error, setError] = useState("");
@@ -117,7 +118,6 @@ export function TicketDetail({ ticket, isLoading, onStatusUpdated, onClose }) {
         }
     }
 
-    // Send on Enter, new line on Shift+Enter — same as chat widget
     function handleKeyDown(e) {
         if (e.key === "Enter" && !e.shiftKey) {
             e.preventDefault();
@@ -160,20 +160,22 @@ export function TicketDetail({ ticket, isLoading, onStatusUpdated, onClose }) {
 
     if (!ticket) return null;
 
+    const messageCount = ticket.messages?.length ?? 0;
+
     return (
         <div className="bg-white rounded-[var(--radius-xl)] border border-[var(--g-300)] shadow-[var(--shadow-sm)] flex flex-col overflow-hidden">
 
             {/* ── Header ── */}
             <div className="flex items-center gap-3 px-5 py-3.5 border-b border-[var(--g-300)] bg-[var(--g-100)]">
-                <Avatar name={ticket.customer_name} size="md" />
+                <Avatar size="md" />
 
-                {/* Name + email */}
+                {/* Ticket identity — no name/email anymore, so show ticket # + a quick summary line */}
                 <div className="flex-1 min-w-0">
                     <p className="font-semibold text-[var(--s)] text-sm truncate">
-                        {ticket.customer_name}
+                        Ticket #{ticket.id}
                     </p>
                     <p className="text-xs text-[var(--g-600)] truncate">
-                        {ticket.customer_email}
+                        {messageCount} {messageCount === 1 ? "message" : "messages"} · Started {new Date(ticket.created_at).toLocaleDateString([], { month: "short", day: "numeric" })}
                     </p>
                 </div>
 
@@ -243,7 +245,7 @@ export function TicketDetail({ ticket, isLoading, onStatusUpdated, onClose }) {
                     <EmptyState icon="💬" title="No messages yet" body="The customer has not sent any messages." />
                 )}
                 {ticket.messages?.map((msg, i) => (
-                    <MessageBubble key={msg.id ?? i} msg={msg} customerName={ticket.customer_name} />
+                    <MessageBubble key={msg.id ?? i} msg={msg} />
                 ))}
             </div>
 

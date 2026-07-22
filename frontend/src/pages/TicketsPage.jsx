@@ -261,7 +261,7 @@ export function TicketsPage() {
                                             : "hover:bg-[var(--g-100)] border-l-transparent"
                                         }`}
                                 >
-                                    <Avatar name="Customer" />
+                                    <Avatar />
                                     <div className="flex-1 min-w-0">
                                         <div className="flex items-center justify-between gap-2 mb-0.5">
                                             <span className={`text-sm truncate ${ticket.is_new ? "font-bold" : "font-semibold"} text-[var(--s)]`}>

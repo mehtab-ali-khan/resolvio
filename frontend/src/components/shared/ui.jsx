@@ -2,15 +2,26 @@
 
 import { Link } from "react-router";
 
+function PersonIcon() {
+    return (
+        <svg width="55%" height="55%" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
+            <circle cx="12" cy="7" r="4" />
+        </svg>
+    );
+}
+
 export function Avatar({ name, size = "md" }) {
-    const initials = name?.split(" ").map(w => w[0]).slice(0, 2).join("").toUpperCase() ?? "?";
+    const initials = name?.trim()
+        ? name.trim().split(" ").map(w => w[0]).slice(0, 2).join("").toUpperCase()
+        : null;
     const sizeClass = size === "sm" ? "w-8 h-8 text-xs" : size === "lg" ? "w-11 h-11 text-base" : "w-9 h-9 text-sm";
     return (
         <div
             className={`${sizeClass} rounded-full flex items-center justify-center font-bold text-white flex-shrink-0 select-none`}
             style={{ background: "var(--gradient)" }}
         >
-            {initials}
+            {initials ?? <PersonIcon />}
         </div>
     );
 }
