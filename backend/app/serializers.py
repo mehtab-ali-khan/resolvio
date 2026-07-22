@@ -205,8 +205,6 @@ class CustomerTicketDetailSerializer(serializers.ModelSerializer):
         model = Ticket
         fields = [
             "id",
-            "customer_name",
-            "customer_email",
             "status",
             "priority",
             "category",
