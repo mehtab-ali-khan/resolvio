@@ -7,7 +7,7 @@ from .models import Company, KnowledgeBaseArticle, Message, Ticket, User
 
 # ─── Ticket Preview ────────────────────────────────────────────────────────────────────
 
-PREVIEW_LENGTH = 60
+PREVIEW_LENGTH = 20
 
 
 def get_message_preview(ticket):
