@@ -2,16 +2,18 @@
 
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
+from typing import Literal
 from pydantic import BaseModel
 
 
 class AIAnswer(BaseModel):
     """
     The fixed-shape result every provider must return from generate_answer().
-    Using a Pydantic model (not plain text) means Gemini's structured-output
-    mode can fill this in directly - no manual text parsing anywhere.
+    Using a Pydantic model (not plain text) means structured-output modes
+    can fill this in directly - no manual text parsing anywhere.
     """
 
+    classification: Literal["greeting", "in_context", "off_topic", "on_topic_no_answer"]
     answer: str
     can_answer: bool
     confidence: float
