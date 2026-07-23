@@ -15,10 +15,7 @@ TOP_K = 5
 SIMILARITY_THRESHOLD = 0.5
 CONFIDENCE_THRESHOLD = 70
 
-CONNECTING_MESSAGE = (
-    "Thanks for reaching out! I've passed this along to our support team "
-    "and someone will follow up with you shortly."
-)
+CONNECTING_MESSAGE = "I don't want to guess on this one — I've flagged it for our support team, and they'll get back to you shortly."
 
 
 @dataclass

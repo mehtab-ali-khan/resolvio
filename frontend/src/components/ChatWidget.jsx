@@ -25,6 +25,8 @@ const styles = `
     --nw-shadow-md: 0 4px 16px rgba(0,0,0,0.10);
     --nw-shadow-lg: 0 8px 32px rgba(0,0,0,0.14);
     --nw-gradient: linear-gradient(135deg, #0f8a5b, #1fd1ab);
+    --nw-success: #059669;
+    --nw-success-soft: #d1fae5;
     color-scheme: light;
   }
 
@@ -144,6 +146,26 @@ function HeaderBtn({ onClick, label, children }) {
   );
 }
 
+// Small status pill — shown in the header once a conversation exists
+function StatusPill({ status }) {
+  const isResolved = status === "resolved";
+  return (
+    <span style={{
+      display: "inline-flex", alignItems: "center", gap: "5px",
+      fontSize: "11px", fontWeight: "600",
+      color: isResolved ? "var(--nw-g-600)" : "var(--nw-success)",
+      background: isResolved ? "var(--nw-g-200)" : "var(--nw-success-soft)",
+      padding: "2px 8px", borderRadius: "999px",
+    }}>
+      <span style={{
+        width: "6px", height: "6px", borderRadius: "50%",
+        background: isResolved ? "var(--nw-g-500)" : "var(--nw-success)",
+      }} />
+      {isResolved ? "Resolved" : "Open"}
+    </span>
+  );
+}
+
 function MessageBubble({ msg }) {
   const fromTeam = isFromTeam(msg.sender_type);
   const senderLabel = getSenderLabel(msg.sender_type);
@@ -198,6 +220,7 @@ export function ChatWidget({ apiKey }) {
   const [firstMessage, setFirstMessage] = useState("");
   const [accessToken, setAccessToken] = useState(null);
   const [messages, setMessages] = useState([]);
+  const [ticketStatus, setTicketStatus] = useState(null);
   const [newMessage, setNewMessage] = useState("");
   const [error, setError] = useState("");
   const [unread, setUnread] = useState(0);
@@ -216,6 +239,9 @@ export function ChatWidget({ apiKey }) {
         if (chatState === "closed") setUnread(u => u + 1);
         return [...prev, data.message];
       });
+    }
+    if (data.type === "ticket_update" && data.status) {
+      setTicketStatus(data.status);
     }
   });
 
@@ -260,6 +286,7 @@ export function ChatWidget({ apiKey }) {
       const ticket = await getTicketByToken(token);
       setAccessToken(token);
       setMessages(ticket.messages);
+      setTicketStatus(ticket.status);
     } catch {
       localStorage.removeItem(STORAGE_KEY);
     } finally {
@@ -279,6 +306,7 @@ export function ChatWidget({ apiKey }) {
       setAccessToken(token);
       const ticket = await getTicketByToken(token);
       setMessages(ticket.messages);
+      setTicketStatus(ticket.status);
       setFirstMessage("");
       if (firstMessageRef.current) firstMessageRef.current.style.height = "auto";
     } catch {
@@ -288,7 +316,6 @@ export function ChatWidget({ apiKey }) {
     }
   }
 
-  // Send first-message form on Enter, new line on Shift+Enter
   function handleFirstMessageKeyDown(e) {
     if (e.key === "Enter" && !e.shiftKey) {
       e.preventDefault();
@@ -307,6 +334,7 @@ export function ChatWidget({ apiKey }) {
       if (textareaRef.current) textareaRef.current.style.height = "auto";
       const ticket = await getTicketByToken(accessToken);
       setMessages(ticket.messages);
+      setTicketStatus(ticket.status);
     } catch {
       setError("Could not send your message. Please try again.");
     } finally {
@@ -374,6 +402,7 @@ export function ChatWidget({ apiKey }) {
       background: "#ffffff",
       flexShrink: 0,
     }}>
+      {/* Left side — company/product name */}
       <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
         <div style={{
           width: "32px", height: "32px", borderRadius: "8px",
@@ -385,13 +414,15 @@ export function ChatWidget({ apiKey }) {
             <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" fill="white" />
           </svg>
         </div>
-        <div>
+        <div style={{ display: "flex", flexDirection: "column", gap: "3px" }}>
           <p style={{ fontSize: "16px", fontWeight: "600", color: "var(--nw-s)", lineHeight: 1.2 }}>
             SUPPORT
           </p>
+          {accessToken && ticketStatus && <StatusPill status={ticketStatus} />}
         </div>
       </div>
 
+      {/* Right side — action buttons */}
       <div style={{ display: "flex", gap: "2px" }}>
         {chatState === "maximized" && (
           <HeaderBtn onClick={() => setChatState("minimized")} label="Minimize">
