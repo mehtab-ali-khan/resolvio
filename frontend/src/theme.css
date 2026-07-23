@@ -43,3 +43,6 @@
   --shadow-md: 0 4px 16px rgba(0,0,0,0.10);
   --shadow-lg: 0 8px 32px rgba(0,0,0,0.14);
 }
+button:not(:disabled) {
+  cursor: pointer;
+}
