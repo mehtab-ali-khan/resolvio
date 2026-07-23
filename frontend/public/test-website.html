@@ -5,9 +5,149 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <title>Widget Test</title>
+    <style>
+      * {
+        box-sizing: border-box;
+        margin: 0;
+        padding: 0;
+        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif;
+      }
+      body {
+        background: #f9fafb;
+        color: #111827;
+        padding: 40px 20px 100px;
+      }
+      .page {
+        max-width: 640px;
+        margin: 0 auto;
+      }
+      .page h1 {
+        font-size: 24px;
+        font-weight: 700;
+        margin-bottom: 6px;
+      }
+      .page > p.intro {
+        font-size: 14px;
+        color: #6b7280;
+        line-height: 1.6;
+        margin-bottom: 28px;
+      }
+      .kb-heading {
+        font-size: 12px;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        color: #6b7280;
+        margin-bottom: 10px;
+      }
+      .article {
+        background: #ffffff;
+        border: 1px solid #e5e7eb;
+        border-radius: 10px;
+        margin-bottom: 10px;
+        overflow: hidden;
+      }
+      .article summary {
+        list-style: none;
+        cursor: pointer;
+        padding: 14px 16px;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+        font-size: 14px;
+        font-weight: 600;
+        color: #111827;
+      }
+      .article summary::-webkit-details-marker {
+        display: none;
+      }
+      .article summary .chevron {
+        flex-shrink: 0;
+        transition: transform 0.15s ease;
+        color: #9ca3af;
+      }
+      .article[open] summary .chevron {
+        transform: rotate(90deg);
+      }
+      .article summary:hover {
+        background: #f9fafb;
+      }
+      .article .body {
+        padding: 0 16px 16px;
+        font-size: 13px;
+        line-height: 1.7;
+        color: #374151;
+        border-top: 1px solid #f3f4f6;
+        padding-top: 12px;
+      }
+      .hint {
+        margin-top: 24px;
+        padding: 12px 14px;
+        border-radius: 10px;
+        background: #eff6ff;
+        border: 1px solid #dbeafe;
+        font-size: 13px;
+        color: #1e40af;
+        line-height: 1.6;
+      }
+    </style>
   </head>
   <body>
-    <h3>HELLO WORLD!</h3>
+    <div class="page">
+      <h1>Widget Test</h1>
+      <p class="intro">
+        These are the demo support articles the AI reads from. Ask a related
+        question in the chat widget (bottom-right) and compare its answer
+        against the article content below.
+      </p>
+
+      <p class="kb-heading">Support Articles</p>
+
+      <details class="article" open>
+        <summary>
+          Shipping Policy
+          <svg class="chevron" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="9 18 15 12 9 6"/></svg>
+        </summary>
+        <div class="body">
+          Standard shipping within the United States takes 5-7 business days 
+          and is free on orders over $50. Orders under $50 have a flat shipping fee of $5.99.
+          Express shipping is available at checkout for an additional $14.99
+          and delivers within 2 business days.
+          We currently ship to all 50 US states and Canada. Once your order ships,
+          you will receive a tracking number by email within 24 hours.
+          Orders placed before 2 PM EST on business days are processed the same day.
+          Orders placed on weekends or holidays are processed the next business day.
+        </div>
+      </details>
+
+      <details class="article">
+        <summary>
+          Return &amp; Refund Policy
+          <svg class="chevron" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="9 18 15 12 9 6"/></svg>
+        </summary>
+        <div class="body">
+          We accept refunds within 30 days of purchase for any item in its original, 
+          unworn condition with tags still attached. To start a refund,
+          contact our support team with your order number and the reason for return.
+
+          Once we receive and inspect the returned item, refunds are issued to the 
+          original payment method within 5-7 business days. 
+          Shipping costs for the original order are non-refundable,
+          and customers are responsible for return shipping costs 
+          unless the item arrived damaged or defective.
+
+          Gift cards and digital products are not eligible for refunds under any circumstances.
+        </div>
+      </details>
+
+
+      <div class="hint">
+        💡 Try asking the chat widget: "Do you offer free shipping?" or
+        "Can I return an item after 30 days?" — the AI's answer should
+        match what's written above.
+      </div>
+    </div>
 
     <script src="https://www.resolvio.dev/widget.js"></script>
     <script>
