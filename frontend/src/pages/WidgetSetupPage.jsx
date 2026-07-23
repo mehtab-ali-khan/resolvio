@@ -1,11 +1,13 @@
 // frontend/src/pages/WidgetSetupPage.jsx
 
 import { useEffect, useState } from "react";
+import { useNavigate } from "react-router";
 import { getCurrentUser } from "../api/tickets.js";
 
 const WIDGET_URL = import.meta.env.VITE_WIDGET_URL;
 
 export function WidgetSetupPage() {
+    const navigate = useNavigate();
     const [user, setUser] = useState(null);
     const [copied, setCopied] = useState(false);
 
@@ -127,6 +129,28 @@ export function WidgetSetupPage() {
                         <p className="text-sm text-[var(--g-600)]">{text}</p>
                     </div>
                 ))}
+            </div>
+
+            {/* Next step — onboarding flow continues to Support Articles */}
+            <div className="mt-8 flex items-center justify-between gap-4 px-5 py-4 rounded-[var(--radius-lg)] bg-[var(--p-soft)] border border-[var(--p)]">
+                <div>
+                    <p className="text-sm font-semibold text-[var(--s)]">
+                        Next, give the AI something to answer from
+                    </p>
+                    <p className="text-xs text-[var(--g-600)] mt-0.5">
+                        Add support articles so your widget can answer real customer questions.
+                    </p>
+                </div>
+                <button
+                    onClick={() => navigate("/knowledge-base")}
+                    className="flex items-center gap-1.5 px-4 py-2.5 rounded-[var(--radius-md)] bg-[var(--p)] text-white text-sm font-semibold hover:bg-[var(--p-strong)] transition flex-shrink-0"
+                >
+                    Add Support Articles
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                        <line x1="5" y1="12" x2="19" y2="12" />
+                        <polyline points="12 5 19 12 12 19" />
+                    </svg>
+                </button>
             </div>
 
         </div>

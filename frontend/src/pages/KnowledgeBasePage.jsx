@@ -4,6 +4,8 @@ import { useEffect, useState } from "react";
 import { createArticle, deleteArticle, listArticles, updateArticle } from "../api/knowledgeBase.js";
 import { EmptyState, formatDateTime } from "../components/shared/ui.jsx";
 
+const TEST_WEBSITE_URL = import.meta.env.VITE_TEST_WEBSITE_URL;
+
 function IndexStatusBadge({ status }) {
     const isReady = status === "ready";
     return (
@@ -255,6 +257,34 @@ export function KnowledgeBasePage() {
                     </div>
                 )}
             </div>
-        </div>
+
+            {/* Next step — onboarding flow continues to testing the widget */}
+            {!isLoading && articles.length == 0 && (
+                <div className="mt-6 flex items-center justify-between gap-4 px-5 py-4 rounded-[var(--radius-lg)] bg-[var(--p-soft)] border border-[var(--p)]">
+                    <div>
+                        <p className="text-sm font-semibold text-[var(--s)]">
+                            Haven't added your articles yet?
+                        </p>
+                        <p className="text-xs text-[var(--g-600)] mt-0.5">
+                            Try the demo widget below to see how it works, then come back here and add your own documents so the AI can answer using your real content.
+                        </p>
+                    </div>
+                    <a
+                        href={TEST_WEBSITE_URL}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="flex items-center gap-1.5 px-4 py-2.5 rounded-[var(--radius-md)] bg-[var(--p)] text-white text-sm font-semibold hover:bg-[var(--p-strong)] transition flex-shrink-0"
+                    >
+                        Test The Widget
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                            <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6" />
+                            <polyline points="15 3 21 3 21 9" />
+                            <line x1="10" y1="14" x2="21" y2="3" />
+                        </svg>
+                    </a>
+                </div>
+            )
+            }
+        </div >
     );
 }

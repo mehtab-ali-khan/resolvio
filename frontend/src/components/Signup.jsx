@@ -27,7 +27,7 @@ export function Signup() {
         setIsLoading(true);
         try {
             await signup(form);
-            navigate("/", { replace: true });
+            navigate("/widget-setup", { replace: true });
         } catch (err) {
             setError(err.message);
         } finally {
