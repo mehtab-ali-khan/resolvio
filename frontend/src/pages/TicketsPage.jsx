@@ -10,7 +10,7 @@ import { TicketDetail } from "../components/tickets/TicketDetail.jsx";
 const WS_BASE = import.meta.env.VITE_WS_URL || "ws://localhost:8000";
 
 const STATUS_FILTERS = [
-    { value: "all", label: "Default" },
+    { value: "all", label: "All" },
     { value: "open", label: "Open" },
     { value: "resolved", label: "Resolved" },
 ];

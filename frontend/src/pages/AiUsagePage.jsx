@@ -147,7 +147,7 @@ export function AiUsagePage() {
                     <p className="text-xs font-semibold uppercase tracking-wider text-[var(--g-500)] mb-1">
                         Total cost — {PERIODS.find(p => p.value === period)?.label.toLowerCase()}
                     </p>
-                    <p className="text-2xl font-bold text-[var(--s)]">
+                    <p className="text-2xl font-semibold text-[var(--s)]">
                         {formatCost(summary.overall_total_cost)}
                     </p>
                 </div>
