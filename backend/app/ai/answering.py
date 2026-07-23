@@ -15,21 +15,33 @@ TOP_K = 5
 SIMILARITY_THRESHOLD = 0.5
 CONFIDENCE_THRESHOLD = 70
 
+CONNECTING_MESSAGE = (
+    "Thanks for reaching out! I've passed this along to our support team "
+    "and someone will follow up with you shortly."
+)
+
 
 @dataclass
 class AnswerOutcome:
     """
     What the RAG pipeline decided about a customer's question.
     This module deliberately knows nothing about tickets or messages -
-    the caller turns this outcome into an actual Message, THEN logs
-    usage against that message, since messages don't exist yet while
-    we're still inside this function.
+    the caller turns this outcome into actual Message rows, THEN logs
+    usage against them, since messages don't exist yet while we're
+    still inside this function.
+
+    requires_escalation=True means TWO messages should be created by the
+    caller: an internal draft (draft_text, for agent review) and a
+    customer-visible one (customer_text, a generic "connecting you"
+    message) - since the real AI answer isn't confident/available enough
+    to show the customer directly.
     """
 
-    attempted: bool
-    visible_to_customer: bool
-    answer_text: str | None
-    confidence: float | None
+    classification: str
+    requires_escalation: bool
+    customer_text: str
+    draft_text: str | None
+    confidence: float
 
     question_embedding_usage: TokenUsage
     question_embedding_model: str
@@ -56,65 +68,65 @@ def answer_question(*, company, question: str) -> AnswerOutcome:
         .order_by("distance")[:TOP_K]
     )
 
-    if not closest_chunks:
-        logger.info("Gate 1: no knowledge base chunks exist for this company yet")
-        return AnswerOutcome(
-            attempted=False,
-            visible_to_customer=False,
-            answer_text=None,
-            confidence=None,
-            question_embedding_usage=embed_usage,
-            question_embedding_model=embedding_provider.embedding_model_name,
-        )
+    if closest_chunks:
+        best_similarity = 1 - closest_chunks[0].distance
+    else:
+        best_similarity = 0.0
 
-    best_similarity = 1 - closest_chunks[0].distance
-
-    if best_similarity < SIMILARITY_THRESHOLD:
+    if closest_chunks and best_similarity >= SIMILARITY_THRESHOLD:
+        chunk_texts = [chunk.content for chunk in closest_chunks]
         logger.info(
-            "Gate 1 FAILED: best similarity %.2f is below threshold %.2f - skipping generation call",
+            "Gate 1 passed: best similarity %.2f - passing real context",
             best_similarity,
-            SIMILARITY_THRESHOLD,
         )
-        return AnswerOutcome(
-            attempted=False,
-            visible_to_customer=False,
-            answer_text=None,
-            confidence=None,
-            question_embedding_usage=embed_usage,
-            question_embedding_model=embedding_provider.embedding_model_name,
+    else:
+        chunk_texts = []
+        logger.info(
+            "Gate 1: no strong match (best similarity %.2f) - passing empty context",
+            best_similarity,
         )
 
-    logger.info(
-        "Gate 1 passed: best similarity %.2f - calling generation provider",
-        best_similarity,
-    )
-
-    chunk_texts = [chunk.content for chunk in closest_chunks]
     result, answer_usage = generation_provider.generate_answer(
         question=question, context_chunks=chunk_texts
     )
 
-    is_confident = result.can_answer and result.confidence >= CONFIDENCE_THRESHOLD
     logger.info(
-        "Gate 2: can_answer=%s confidence=%s -> visible_to_customer=%s",
+        "Classification: %s can_answer=%s confidence=%s",
+        result.classification,
         result.can_answer,
         result.confidence,
-        is_confident,
     )
 
-    if not result.can_answer:
-        logger.info("AI answer not attempted by provider: company_id=%s", company.id)
+    if result.classification in ("greeting", "off_topic"):
+        requires_escalation = False
+        customer_text = result.answer
+        draft_text = None
+    elif (
+        result.classification == "in_context"
+        and result.confidence >= CONFIDENCE_THRESHOLD
+    ):
+        requires_escalation = False
+        customer_text = result.answer
+        draft_text = None
     else:
-        logger.info(
-            "AI answer generated: company_id=%s visible_to_customer=%s",
-            company.id,
-            is_confident,
-        )
+        # in_context but not confident enough, or on_topic_no_answer -
+        # either way, don't show the AI's raw attempt to the customer.
+        requires_escalation = True
+        customer_text = CONNECTING_MESSAGE
+        draft_text = result.answer
+
+    logger.info(
+        "AI reply decided: company_id=%s classification=%s requires_escalation=%s",
+        company.id,
+        result.classification,
+        requires_escalation,
+    )
 
     return AnswerOutcome(
-        attempted=True,
-        visible_to_customer=is_confident,
-        answer_text=result.answer,
+        classification=result.classification,
+        requires_escalation=requires_escalation,
+        customer_text=customer_text,
+        draft_text=draft_text,
         confidence=result.confidence,
         question_embedding_usage=embed_usage,
         question_embedding_model=embedding_provider.embedding_model_name,

@@ -84,32 +84,74 @@ def _attempt_ai_reply(*, ticket, customer_message):
 
     log_ai_usage(
         company=ticket.company,
-        ticket=ticket,
-        message=customer_message,
+        ticket=None,
+        message=None,
         model_name=outcome.question_embedding_model,
         purpose=AIUsageLog.Purpose.EMBEDDING,
         usage=outcome.question_embedding_usage,
     )
 
-    if not outcome.attempted:
-        return
+    if outcome.requires_escalation:
+        # Internal draft — the AI's real attempt, agent-eyes-only.
+        draft_message = Message.objects.create(
+            ticket=ticket,
+            sender_type=Message.SenderType.AI,
+            body=outcome.draft_text,
+            is_internal=True,
+            ai_confidence=outcome.confidence,
+        )
 
-    ai_message = Message.objects.create(
-        ticket=ticket,
-        sender_type=Message.SenderType.AI,
-        body=outcome.answer_text,
-        is_internal=not outcome.visible_to_customer,
-        ai_confidence=outcome.confidence,
-    )
+        log_ai_usage(
+            company=ticket.company,
+            ticket=ticket,
+            message=draft_message,
+            model_name=outcome.answer_model_name,
+            purpose=AIUsageLog.Purpose.ANSWER_GENERATION,
+            usage=outcome.answer_usage,
+        )
 
-    log_ai_usage(
-        company=ticket.company,
-        ticket=ticket,
-        message=ai_message,
-        model_name=outcome.answer_model_name,
-        purpose=AIUsageLog.Purpose.ANSWER_GENERATION,
-        usage=outcome.answer_usage,
-    )
+        _push_to_agents(
+            ticket.company_id,
+            {
+                "type": "new_message",
+                "ticket_id": ticket.id,
+                "message": {
+                    "id": draft_message.id,
+                    "sender_type": draft_message.sender_type,
+                    "body": draft_message.body,
+                    "is_internal": draft_message.is_internal,
+                    "ai_confidence": draft_message.ai_confidence,
+                    "created_at": draft_message.created_at.isoformat(),
+                },
+            },
+        )
+
+        # Customer-visible message — a generic "connecting you" text,
+        # not the AI's raw (unconfident) attempt.
+        customer_message_row = Message.objects.create(
+            ticket=ticket,
+            sender_type=Message.SenderType.AI,
+            body=outcome.customer_text,
+            is_internal=False,
+            ai_confidence=None,
+        )
+    else:
+        customer_message_row = Message.objects.create(
+            ticket=ticket,
+            sender_type=Message.SenderType.AI,
+            body=outcome.customer_text,
+            is_internal=False,
+            ai_confidence=outcome.confidence,
+        )
+
+        log_ai_usage(
+            company=ticket.company,
+            ticket=ticket,
+            message=customer_message_row,
+            model_name=outcome.answer_model_name,
+            purpose=AIUsageLog.Purpose.ANSWER_GENERATION,
+            usage=outcome.answer_usage,
+        )
 
     _push_to_agents(
         ticket.company_id,
@@ -117,29 +159,28 @@ def _attempt_ai_reply(*, ticket, customer_message):
             "type": "new_message",
             "ticket_id": ticket.id,
             "message": {
-                "id": ai_message.id,
-                "sender_type": ai_message.sender_type,
-                "body": ai_message.body,
-                "is_internal": ai_message.is_internal,
-                "ai_confidence": ai_message.ai_confidence,
-                "created_at": ai_message.created_at.isoformat(),
+                "id": customer_message_row.id,
+                "sender_type": customer_message_row.sender_type,
+                "body": customer_message_row.body,
+                "is_internal": customer_message_row.is_internal,
+                "ai_confidence": customer_message_row.ai_confidence,
+                "created_at": customer_message_row.created_at.isoformat(),
             },
         },
     )
 
-    if outcome.visible_to_customer:
-        _push_to_widget(
-            ticket.id,
-            {
-                "type": "new_message",
-                "message": {
-                    "id": ai_message.id,
-                    "sender_type": ai_message.sender_type,
-                    "body": ai_message.body,
-                    "created_at": ai_message.created_at.isoformat(),
-                },
+    _push_to_widget(
+        ticket.id,
+        {
+            "type": "new_message",
+            "message": {
+                "id": customer_message_row.id,
+                "sender_type": customer_message_row.sender_type,
+                "body": customer_message_row.body,
+                "created_at": customer_message_row.created_at.isoformat(),
             },
-        )
+        },
+    )
 
 
 def add_customer_message(*, ticket, message):
