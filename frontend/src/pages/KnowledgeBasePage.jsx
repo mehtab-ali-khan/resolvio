@@ -138,7 +138,6 @@ export function KnowledgeBasePage() {
 
                     {!isLoading && articles.length === 0 && (
                         <EmptyState
-                            icon="📝"
                             title="No articles yet"
                             body="Write your first article so the AI has something to answer from."
                         />

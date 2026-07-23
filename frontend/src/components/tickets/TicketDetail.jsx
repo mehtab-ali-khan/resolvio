@@ -153,7 +153,7 @@ export function TicketDetail({ ticket, isLoading, onStatusUpdated, onClose }) {
     if (isLoading) {
         return (
             <div className="bg-white rounded-[var(--radius-xl)] border border-[var(--g-300)] shadow-[var(--shadow-sm)] overflow-hidden">
-                <EmptyState icon="⏳" title="Loading conversation…" body="Please wait." />
+                <EmptyState title="Loading conversation…" body="Please wait." />
             </div>
         );
     }
@@ -242,7 +242,7 @@ export function TicketDetail({ ticket, isLoading, onStatusUpdated, onClose }) {
                 className="flex-1 px-5 py-4 overflow-y-auto max-h-[calc(100vh-300px)] min-h-48 flex flex-col gap-3 bg-[var(--g-100)]"
             >
                 {ticket.messages?.length === 0 && (
-                    <EmptyState icon="💬" title="No messages yet" body="The customer has not sent any messages." />
+                    <EmptyState title="No messages yet" body="The customer has not sent any messages." />
                 )}
                 {ticket.messages?.map((msg, i) => (
                     <MessageBubble key={msg.id ?? i} msg={msg} />

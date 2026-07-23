@@ -240,7 +240,6 @@ export function TicketsPage() {
                         {/* Empty state */}
                         {!isLoading && tickets.length === 0 && (
                             <EmptyState
-                                icon="📭"
                                 title={search ? "No matches found" : "No tickets yet"}
                                 body={search ? "Try a different search term." : "Tickets submitted via the widget will appear here."}
                             />

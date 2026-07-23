@@ -89,7 +89,6 @@ export function AiUsagePage() {
 
                 {isForbidden && (
                     <EmptyState
-                        icon="🔒"
                         title="Owners only"
                         body="Only company owners can view AI usage and cost data."
                     />
@@ -107,7 +106,6 @@ export function AiUsagePage() {
 
                 {isOwner && !isLoading && !error && summary && summary.by_model.length === 0 && (
                     <EmptyState
-                        icon="📊"
                         title="No AI usage yet"
                         body="Once your AI providers start answering tickets, costs will show up here."
                     />
