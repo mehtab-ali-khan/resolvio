@@ -84,8 +84,8 @@ def _attempt_ai_reply(*, ticket, customer_message):
 
     log_ai_usage(
         company=ticket.company,
-        ticket=None,
-        message=None,
+        ticket=ticket,
+        message=customer_message,
         model_name=outcome.question_embedding_model,
         purpose=AIUsageLog.Purpose.EMBEDDING,
         usage=outcome.question_embedding_usage,
