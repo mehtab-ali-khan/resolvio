@@ -5,6 +5,7 @@ import { createCustomerMessage, createTicket, getTicketByToken } from "../api/ti
 import { useWebSocket } from "../hooks/useWebSocket.js";
 
 const STORAGE_KEY = "resolvio_ticket_token";
+const AI_REPLY_TIMEOUT_MS = 20000;
 
 // ─── Styles ───────────────────────────────────────────────────────────────────
 const styles = `
@@ -211,12 +212,36 @@ function MessageBubble({ msg }) {
   );
 }
 
+// Typing indicator — bouncing dots bubble, styled like a team message
+function TypingIndicator() {
+  return (
+    <div className="nw-msg" style={{ display: "flex", flexDirection: "column", alignItems: "flex-start", gap: "3px" }}>
+      <div style={{
+        padding: "10px 14px",
+        borderRadius: "4px 18px 18px 18px",
+        background: "#ffffff",
+        border: "1px solid var(--nw-g-300)",
+        boxShadow: "var(--nw-shadow-sm)",
+        display: "flex", alignItems: "center", gap: "6px",
+      }}>
+        <span className="nw-dot" />
+        <span className="nw-dot" />
+        <span className="nw-dot" />
+      </div>
+      <span style={{ fontSize: "10px", color: "var(--nw-g-500)", padding: "0 4px" }}>
+        AI is typing…
+      </span>
+    </div>
+  );
+}
+
 // ─── Main widget ──────────────────────────────────────────────────────────────
 
 export function ChatWidget({ apiKey }) {
   const [chatState, setChatState] = useState("closed");
   const [isLoadingTicket, setIsLoadingTicket] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isWaitingForAI, setIsWaitingForAI] = useState(false);
   const [firstMessage, setFirstMessage] = useState("");
   const [accessToken, setAccessToken] = useState(null);
   const [messages, setMessages] = useState([]);
@@ -227,9 +252,17 @@ export function ChatWidget({ apiKey }) {
   const messagesEndRef = useRef(null);
   const textareaRef = useRef(null);
   const firstMessageRef = useRef(null);
+  const aiTimeoutRef = useRef(null);
 
   const WS_BASE = import.meta.env.VITE_WS_URL || "ws://localhost:8000";
   const wsUrl = accessToken ? `${WS_BASE}/ws/widget/${accessToken}/` : null;
+
+  function clearAiWaitTimeout() {
+    if (aiTimeoutRef.current) {
+      clearTimeout(aiTimeoutRef.current);
+      aiTimeoutRef.current = null;
+    }
+  }
 
   useWebSocket(wsUrl, (data) => {
     if (data.type === "new_message" && data.message) {
@@ -239,6 +272,9 @@ export function ChatWidget({ apiKey }) {
         if (chatState === "closed") setUnread(u => u + 1);
         return [...prev, data.message];
       });
+      // Any incoming message (AI or agent) means we're no longer waiting
+      clearAiWaitTimeout();
+      setIsWaitingForAI(false);
     }
     if (data.type === "ticket_update" && data.status) {
       setTicketStatus(data.status);
@@ -253,13 +289,14 @@ export function ChatWidget({ apiKey }) {
     } else {
       setIsLoadingTicket(false);
     }
+    return () => clearAiWaitTimeout();
   }, []);
 
   useEffect(() => {
     if (chatState !== "closed") {
       messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
     }
-  }, [messages, chatState]);
+  }, [messages, isWaitingForAI, chatState]);
 
   useEffect(() => {
     if (chatState !== "closed") setUnread(0);
@@ -325,17 +362,31 @@ export function ChatWidget({ apiKey }) {
 
   async function submitMessage(e) {
     e.preventDefault();
-    if (isSubmitting || !newMessage.trim()) return;
+    const trimmed = newMessage.trim();
+    if (isSubmitting || isWaitingForAI || !trimmed) return;
+
     setError("");
+
+    const optimisticMessage = {
+      id: `temp-${Date.now()}`,
+      sender_type: "customer",
+      body: trimmed,
+      created_at: new Date().toISOString(),
+    };
+    setMessages(prev => [...prev, optimisticMessage]);
+    setNewMessage("");
+    if (textareaRef.current) textareaRef.current.style.height = "auto";
+
     setIsSubmitting(true);
     try {
-      await createCustomerMessage(accessToken, { message: newMessage });
-      setNewMessage("");
-      if (textareaRef.current) textareaRef.current.style.height = "auto";
-      const ticket = await getTicketByToken(accessToken);
-      setMessages(ticket.messages);
-      setTicketStatus(ticket.status);
+      await createCustomerMessage(accessToken, { message: trimmed });
+      setIsWaitingForAI(true);
+      clearAiWaitTimeout();
+      aiTimeoutRef.current = setTimeout(() => {
+        setIsWaitingForAI(false);
+      }, AI_REPLY_TIMEOUT_MS);
     } catch {
+      setMessages(prev => prev.filter(m => m.id !== optimisticMessage.id));
       setError("Could not send your message. Please try again.");
     } finally {
       setIsSubmitting(false);
@@ -353,6 +404,7 @@ export function ChatWidget({ apiKey }) {
     if (!window.confirm("Start a new conversation? You won't be able to return to this conversation.")) {
       return;
     }
+    clearAiWaitTimeout();
     localStorage.removeItem(STORAGE_KEY);
     setAccessToken(null);
     setMessages([]);
@@ -360,7 +412,10 @@ export function ChatWidget({ apiKey }) {
     setNewMessage("");
     setError("");
     setUnread(0);
+    setIsWaitingForAI(false);
   }
+
+  const isReplyBoxDisabled = isSubmitting || isWaitingForAI;
 
   // ─── State 1: Closed — just the bubble ───────────────────────────────────
 
@@ -558,7 +613,7 @@ export function ChatWidget({ apiKey }) {
               background: "var(--nw-g-100)",
             }}
           >
-            {messages.length === 0 && (
+            {messages.length === 0 && !isWaitingForAI && (
               <p style={{ textAlign: "center", color: "var(--nw-g-500)", fontSize: "13px", marginTop: "20px" }}>
                 No messages yet.
               </p>
@@ -566,6 +621,7 @@ export function ChatWidget({ apiKey }) {
             {messages.map((msg, i) => (
               <MessageBubble key={msg.id ?? i} msg={msg} />
             ))}
+            {isWaitingForAI && <TypingIndicator />}
             <div ref={messagesEndRef} />
           </div>
 
@@ -586,8 +642,8 @@ export function ChatWidget({ apiKey }) {
               padding: "8px 12px",
               borderRadius: "12px",
               border: "1px solid var(--nw-g-300)",
-              background: "var(--nw-g-100)",
-              transition: "border-color 0.15s",
+              background: isReplyBoxDisabled ? "var(--nw-g-200)" : "var(--nw-g-100)",
+              transition: "border-color 0.15s, background 0.15s",
             }}
               onFocus={() => { }}
             >
@@ -597,7 +653,8 @@ export function ChatWidget({ apiKey }) {
                 value={newMessage}
                 required
                 rows={1}
-                placeholder="Write a message…"
+                placeholder={isWaitingForAI ? "Waiting for a reply…" : "Write a message…"}
+                disabled={isReplyBoxDisabled}
                 onChange={handleTextareaInput}
                 onKeyDown={handleKeyDown}
                 style={{
@@ -614,25 +671,26 @@ export function ChatWidget({ apiKey }) {
                   overflowY: "auto",
                   fontFamily: "inherit",
                   outline: "none",
+                  cursor: isReplyBoxDisabled ? "not-allowed" : "text",
                 }}
               />
 
               <button
                 type="button"
                 onClick={submitMessage}
-                disabled={isSubmitting || !newMessage.trim()}
+                disabled={isReplyBoxDisabled || !newMessage.trim()}
                 aria-label="Send message"
                 aria-busy={isSubmitting}
                 style={{
                   width: "32px", height: "32px",
                   borderRadius: "8px",
-                  background: newMessage.trim() ? "var(--nw-gradient)" : "var(--nw-g-300)",
+                  background: newMessage.trim() && !isReplyBoxDisabled ? "var(--nw-gradient)" : "var(--nw-g-300)",
                   border: "none",
-                  cursor: isSubmitting || !newMessage.trim() ? "wait" : "pointer",
-                  opacity: isSubmitting ? 0.75 : 1,
+                  cursor: isReplyBoxDisabled || !newMessage.trim() ? "not-allowed" : "pointer",
+                  opacity: isReplyBoxDisabled ? 0.6 : 1,
                   display: "flex", alignItems: "center", justifyContent: "center",
                   flexShrink: 0,
-                  transition: "background 0.15s",
+                  transition: "background 0.15s, opacity 0.15s",
                 }}
               >
                 {isSubmitting ? (
