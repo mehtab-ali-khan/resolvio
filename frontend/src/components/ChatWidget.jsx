@@ -377,16 +377,19 @@ export function ChatWidget({ apiKey }) {
     setNewMessage("");
     if (textareaRef.current) textareaRef.current.style.height = "auto";
 
+    setIsWaitingForAI(true);
+    clearAiWaitTimeout();
+    aiTimeoutRef.current = setTimeout(() => {
+      setIsWaitingForAI(false);
+    }, AI_REPLY_TIMEOUT_MS);
+
     setIsSubmitting(true);
     try {
       await createCustomerMessage(accessToken, { message: trimmed });
-      setIsWaitingForAI(true);
-      clearAiWaitTimeout();
-      aiTimeoutRef.current = setTimeout(() => {
-        setIsWaitingForAI(false);
-      }, AI_REPLY_TIMEOUT_MS);
     } catch {
       setMessages(prev => prev.filter(m => m.id !== optimisticMessage.id));
+      clearAiWaitTimeout();
+      setIsWaitingForAI(false);
       setError("Could not send your message. Please try again.");
     } finally {
       setIsSubmitting(false);
