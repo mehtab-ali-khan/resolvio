@@ -265,6 +265,21 @@ def add_agent_reply(*, ticket, message):
     return created_message
 
 
+def notify_ticket_status_change(*, ticket):
+    """
+    Broadcasts a ticket's current status to its widget group. Called after
+    an agent changes a ticket's status, so the customer's widget updates
+    live without needing to send/receive a new message first.
+    """
+    _push_to_widget(
+        ticket.id,
+        {
+            "type": "ticket_update",
+            "status": ticket.status,
+        },
+    )
+
+
 def create_knowledge_base_article(*, company, title, body):
     try:
         article = KnowledgeBaseArticle.objects.create(

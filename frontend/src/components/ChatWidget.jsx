@@ -414,7 +414,7 @@ export function ChatWidget({ apiKey }) {
             <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" fill="white" />
           </svg>
         </div>
-        <div style={{ display: "flex", flexDirection: "column", gap: "3px" }}>
+        <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
           <p style={{ fontSize: "16px", fontWeight: "600", color: "var(--nw-s)", lineHeight: 1.2 }}>
             SUPPORT
           </p>

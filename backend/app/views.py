@@ -44,6 +44,7 @@ from .services import (
     create_knowledge_base_article,
     create_ticket_with_message,
     update_knowledge_base_article,
+    notify_ticket_status_change,
 )
 
 logger = logging.getLogger(__name__)
@@ -229,6 +230,13 @@ class TicketDetailView(RetrieveUpdateAPIView):
             instance.save(update_fields=["is_new"])
         serializer = self.get_serializer(instance)
         return Response(serializer.data)
+
+    def perform_update(self, serializer):
+        previous_status = serializer.instance.status
+        ticket = serializer.save()
+
+        if ticket.status != previous_status:
+            notify_ticket_status_change(ticket=ticket)
 
 
 class AgentReplyCreateView(CreateAPIView):
